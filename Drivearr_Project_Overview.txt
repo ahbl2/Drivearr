@@ -1,0 +1,89 @@
+# Drivearr – Project Overview for Cursor AI
+Date: 2025-06-04
+
+## 🎯 Project Name
+**Drivearr**
+
+## 🧠 Project Intent
+Drivearr is a self-hosted tool that allows users to selectively sync movies and TV shows from their Plex library to an external USB drive for offline viewing, sharing, or mobile playback.
+
+The goal is to make this process seamless and smart:
+- Show the full Plex library (with poster art)
+- Detect what’s already on a plugged-in USB drive
+- Let the user queue up specific seasons, episodes, or full shows/movies
+- Copy only missing or new items
+- Track sync history per drive via `.plex2drive.json`
+- Provide a friendly web-based interface for configuration and control
+
+---
+
+## 🛠️ Functionality Highlights
+
+- ✅ Plex Library Integration via Plex API (TV Shows and Movies)
+- ✅ Poster art, metadata, and browsing UI
+- ✅ Queue-based and real-time sync of media to USB drives
+- ✅ Auto-detection of partial seasons and missing files
+- ✅ Smart USB comparison + skip already copied content
+- ✅ First-launch setup wizard and config editor
+- ✅ Persistent settings stored in `config.json`
+- ✅ `.plex2drive.json` saved on each drive to track what’s been synced
+- ✅ Responsive Vue 3 frontend with dark mode and modular components
+
+---
+
+## 🗂️ Current File Structure (Core)
+
+drivearr/
+├── backend/
+│   ├── index.js
+│   ├── routes/
+│   │   ├── config.js
+│   │   ├── plex.js
+│   │   ├── sync.js
+│   │   └── usb.js
+│   ├── services/
+│   │   ├── configManager.js
+│   │   ├── driveScanner.js
+│   │   ├── manifestManager.js
+│   │   ├── plexScanner.js
+│   │   └── syncEngine.js
+│   └── utils/
+│       └── fileUtils.js
+├── config/
+│   └── config.json (auto-generated at runtime)
+├── frontend/
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── package.json
+│   └── src/
+│       ├── main.js
+│       └── components/
+│           ├── InitialSetup.vue
+│           ├── LibraryBrowser.vue
+│           └── SyncQueue.vue
+├── .env (optional)
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
+
+---
+
+## 🧪 Dev/Run Instructions
+
+### Run via Docker:
+1. `docker build -t drivearr .`
+2. `docker run -d --name drivearr -p 3000:3000 -v "/plex/tv:/plex/tv" -v "/plex/movies:/plex/movies" -v "/mnt/disks:/usbdrives" drivearr`
+3. Visit `http://<your-ip>:3000` to begin setup
+
+### Run Locally (dev):
+- Backend: `node backend/index.js`
+- Frontend: `npm run dev` from `/frontend`
+
+---
+
+## 📌 Notes for Cursor AI Use
+Cursor should be used to:
+- Extend Vue components or route logic
+- Refactor service layers like sync or USB detection
+- Add friend-specific profiles or tagging
+- Optimize frontend state or introduce Vuex/Pinia if needed

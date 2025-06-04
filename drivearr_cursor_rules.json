@@ -1,0 +1,38 @@
+# .cursor/rules.json for Drivearr
+
+{
+  "rules": [
+    {
+      "name": "Folder Structure",
+      "description": "Maintain the defined backend/frontend project layout. Backend services go in /backend/services, frontend Vue components in /frontend/src/components."
+    },
+    {
+      "name": "Component Separation",
+      "description": "Frontend Vue components must stay modular. Do not combine InitialSetup, LibraryBrowser, and SyncQueue logic into one file."
+    },
+    {
+      "name": "Avoid Breaking Poster Fetch",
+      "description": "Preserve Plex poster and metadata handling unless updating for compatibility or improvement. Ensure poster thumbnails remain intact."
+    },
+    {
+      "name": "Respect Config Boundaries",
+      "description": "Keep all runtime settings in config.json. Only fallback to .env for dev override. Never hardcode settings."
+    },
+    {
+      "name": "Safe USB Syncing",
+      "description": "Do not overwrite or delete existing files on USB drives unless explicitly told. Use driveScanner + manifestManager for sync comparison."
+    },
+    {
+      "name": "Naming Convention",
+      "description": "Preserve Drivearr naming style. Use camelCase in JS files, kebab-case in filenames where needed."
+    },
+    {
+      "name": "Environment Handling",
+      "description": "All API calls that require PLEX_TOKEN or config must gracefully fail and report helpful errors in the UI."
+    },
+    {
+      "name": "Frontend Design Consistency",
+      "description": "Stick with dark mode, minimal UI, poster-based browsing, and responsive layout throughout the app."
+    }
+  ]
+}

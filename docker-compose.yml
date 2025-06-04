@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  drivearr:
+    container_name: drivearr
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - /mnt/user/media/plex media/Media/TV Shows:/plex/tv
+      - /mnt/user/media/plex media/Media/Movies:/plex/movies
+      - /mnt/disks:/usbdrives
+    restart: unless-stopped
