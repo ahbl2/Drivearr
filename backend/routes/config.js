@@ -8,14 +8,11 @@ router.get('/', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
-  const newConfig = req.body
-
-  if (!newConfig.PLEX_BASE_URL || !newConfig.PLEX_TOKEN || !newConfig.MEDIA_TV_DIR || !newConfig.MEDIA_MOVIES_DIR || !newConfig.USB_MOUNT_ROOT) {
-    return res.status(400).json({ error: 'Missing required fields.' })
-  }
-
-  await saveConfig(newConfig)
-  res.json({ success: true })
+  const newConfig = req.body;
+  const currentConfig = await loadConfig() || {};
+  const mergedConfig = { ...currentConfig, ...newConfig };
+  await saveConfig(mergedConfig);
+  res.json({ success: true });
 })
 
 module.exports = router

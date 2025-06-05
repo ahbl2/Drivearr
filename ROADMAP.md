@@ -43,6 +43,9 @@
   - [ ] Input sanitization
 
 ## Phase 3: User Experience & Interface
+
+> Note: We will continue to use our own custom frontend, closely mimicking Sonarr's style and layout, rather than forking or directly reusing Sonarr's frontend code. All UI/UX improvements will be implemented in our own Vue-based codebase for maintainability and flexibility.
+
 ### UI/UX Improvements
 - [ ] Enhanced dashboard
   - [ ] System status overview

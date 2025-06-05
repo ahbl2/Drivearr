@@ -3,7 +3,7 @@
     <h2 class="section-title">TV Shows</h2>
     <div class="media-grid">
       <div
-        v-for="show in library.tvShows"
+        v-for="show in filteredTvShows"
         :key="show.key"
         class="media-card"
         @click="addToQueue(show)"
@@ -14,6 +14,7 @@
             <i class="fa fa-plus"></i>
           </button>
         </div>
+        <div class="status-tag ready">Ready to Sync</div>
         <p class="media-title">{{ show.title }}</p>
       </div>
     </div>
@@ -21,7 +22,7 @@
     <h2 class="section-title">Movies</h2>
     <div class="media-grid">
       <div
-        v-for="movie in library.movies"
+        v-for="movie in filteredMovies"
         :key="movie.key"
         class="media-card"
         @click="addToQueue(movie)"
@@ -32,6 +33,7 @@
             <i class="fa fa-plus"></i>
           </button>
         </div>
+        <div class="status-tag ready">Ready to Sync</div>
         <p class="media-title">{{ movie.title }}</p>
       </div>
     </div>
@@ -39,8 +41,13 @@
 </template>
 
 <script setup>
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, computed } from 'vue'
 import axios from 'axios'
+
+const props = defineProps({
+  notify: Function,
+  searchQuery: String
+})
 
 const library = reactive({ tvShows: [], movies: [] })
 const emit = defineEmits(['add'])
@@ -48,6 +55,16 @@ const emit = defineEmits(['add'])
 const addToQueue = (item) => {
   emit('add', item)
 }
+
+const filteredTvShows = computed(() => {
+  if (!props.searchQuery) return library.tvShows
+  return library.tvShows.filter(show => show.title.toLowerCase().includes(props.searchQuery.toLowerCase()))
+})
+
+const filteredMovies = computed(() => {
+  if (!props.searchQuery) return library.movies
+  return library.movies.filter(movie => movie.title.toLowerCase().includes(props.searchQuery.toLowerCase()))
+})
 
 onMounted(async () => {
   const res = await axios.get('/api/plex/library')
@@ -66,14 +83,14 @@ onMounted(async () => {
 }
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
 .media-card {
   background: #23293a;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
@@ -81,6 +98,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   position: relative;
+  min-width: 0;
 }
 .media-card:hover {
   transform: translateY(-4px) scale(1.03);
@@ -89,24 +107,24 @@ onMounted(async () => {
 .poster-wrapper {
   position: relative;
   width: 100%;
-  height: 220px;
+  aspect-ratio: 2/3;
+  background: #181c24;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #181c24;
 }
 .poster {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 0 0 10px 10px;
+  border-radius: 0 0 12px 12px;
   transition: filter 0.2s;
 }
 .add-btn {
   position: absolute;
   bottom: 10px;
   right: 10px;
-  background: #3b82f6;
+  background: #2563eb;
   color: #fff;
   border: none;
   border-radius: 50%;
@@ -126,13 +144,27 @@ onMounted(async () => {
   opacity: 1;
 }
 .add-btn:hover {
+  background: #3b82f6;
+}
+.status-tag {
+  width: 100%;
+  text-align: center;
+  font-size: 0.98rem;
+  font-weight: 500;
+  padding: 0.3rem 0;
+  margin-top: 0.2rem;
+  border-radius: 0 0 8px 8px;
+  letter-spacing: 0.5px;
+}
+.status-tag.ready {
   background: #2563eb;
+  color: #fff;
 }
 .media-title {
   color: #fff;
   font-size: 1rem;
   font-weight: 500;
-  margin: 1rem 0 0.5rem 0;
+  margin: 0.7rem 0 0.5rem 0;
   text-align: center;
   padding: 0 0.5rem;
   word-break: break-word;

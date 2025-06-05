@@ -17,9 +17,8 @@
             <span class="media-title">{{ item.title }}</span>
             <span v-if="item.season" class="media-ep">S{{ item.season }}E{{ item.episode }}</span>
           </div>
-          <div class="queue-status">
-            <span :class="['status-indicator', statusMap[itemStatus(item).status] || 'pending']"></span>
-            <span class="status-label">{{ statusText(itemStatus(item).status) }}</span>
+          <div class="status-tag" :class="statusMap[itemStatus(item).status] || 'pending'">
+            {{ statusText(itemStatus(item).status) }}
           </div>
           <div v-if="itemStatus(item).status === 'syncing' || itemStatus(item).progress > 0" class="item-progress-bar">
             <div class="progress-bar-inner" :style="{ width: itemStatus(item).progress + '%' }"></div>
@@ -183,14 +182,15 @@ onUnmounted(() => {
 }
 .queue-card {
   background: #23293a;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1.2rem 1.5rem;
   position: relative;
   transition: box-shadow 0.15s, transform 0.15s;
+  min-width: 0;
 }
 .queue-card:hover {
   box-shadow: 0 6px 18px rgba(0,0,0,0.18);
@@ -200,6 +200,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  flex: 1;
 }
 .queue-title-row {
   display: flex;
@@ -216,42 +217,41 @@ onUnmounted(() => {
   font-size: 0.98rem;
   font-weight: 400;
 }
-.queue-status {
-  color: #bfc7d5;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.status-indicator {
+.status-tag {
+  width: fit-content;
+  min-width: 110px;
+  text-align: center;
+  font-size: 0.98rem;
+  font-weight: 500;
+  padding: 0.2rem 0.8rem;
+  margin: 0.5rem 0 0.2rem 0;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
   display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 0.3rem;
-  border: 2px solid #23293a;
 }
-.status-indicator.ready {
-  background: #bfc7d5;
+.status-tag.ready {
+  background: #2563eb;
+  color: #fff;
 }
-.status-indicator.syncing {
+.status-tag.syncing {
   background: #3b82f6;
+  color: #fff;
 }
-.status-indicator.done {
+.status-tag.done {
   background: #34d399;
+  color: #fff;
 }
-.status-indicator.error {
+.status-tag.error {
   background: #f87171;
+  color: #fff;
 }
-.status-indicator.skipped {
+.status-tag.skipped {
   background: #fbbf24;
+  color: #23293a;
 }
-.status-indicator.pending {
+.status-tag.pending {
   background: #64748b;
-}
-.status-label {
-  font-size: 0.97rem;
-  color: #bfc7d5;
+  color: #fff;
 }
 .item-progress-bar {
   width: 100%;
@@ -282,15 +282,16 @@ onUnmounted(() => {
   color: #fff;
   border: none;
   border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   cursor: pointer;
   transition: background 0.2s;
   margin-left: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 .remove-btn:hover {
   background: #dc2626;
@@ -310,6 +311,8 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   cursor: pointer;
   transition: background 0.2s;
+  width: 100%;
+  max-width: 340px;
 }
 .sync-btn:disabled {
   background: #334155;

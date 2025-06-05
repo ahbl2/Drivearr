@@ -17,11 +17,13 @@ const plexRoutes = require('./routes/plex');
 const syncRoutes = require('./routes/sync');
 const configRoutes = require('./routes/config');
 const usbRoutes = require('./routes/usb');
+const plexAuthRoutes = require('./routes/plexAuth');
 
 app.use('/api/plex', plexRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/usb', usbRoutes);
+app.use('/api/plex-auth', plexAuthRoutes);
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
