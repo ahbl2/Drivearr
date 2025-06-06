@@ -6,6 +6,9 @@
     <div v-else>
       <div class="browse-header">
         <h2>Browse {{ type === 'movie' ? 'Movies' : 'TV Shows' }}</h2>
+        <div class="alpha-pagination">
+          <button v-for="letter in alphaLetters" :key="letter" :class="['alpha-btn', { active: letter === activeLetter }]" @click="setAlpha(letter)">{{ letter }}</button>
+        </div>
         <div class="search-container">
           <input 
             v-model="search" 
@@ -47,26 +50,6 @@
       <div v-else-if="items.length === 0" class="no-results">
         No {{ type === 'movie' ? 'movies' : 'TV shows' }} found.
       </div>
-
-      <div v-if="totalPages > 1" class="pagination">
-        <button 
-          :disabled="currentPage === 1" 
-          @click="changePage(currentPage - 1)"
-          class="page-btn"
-        >
-          Previous
-        </button>
-        <span class="page-info">
-          Page {{ currentPage }} of {{ totalPages }}
-        </span>
-        <button 
-          :disabled="currentPage === totalPages" 
-          @click="changePage(currentPage + 1)"
-          class="page-btn"
-        >
-          Next
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -90,14 +73,20 @@ const toast = useToast()
 const items = ref([])
 const search = ref('')
 const loading = ref(false)
-const currentPage = ref(1)
-const pageSize = ref(50)
-const totalPages = ref(1)
 const queue = ref(new Set())
 const sectionKey = ref('')
-
-// Fetch config to check if section is selected
 const sectionSelected = ref(true)
+
+const alphaLetters = [
+  '#', ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)), '*'
+]
+const activeLetter = ref('#')
+
+function setAlpha(letter) {
+  activeLetter.value = letter
+  search.value = ''
+  fetchItems()
+}
 
 async function checkSectionSelected() {
   try {
@@ -114,12 +103,11 @@ async function checkSectionSelected() {
   }
 }
 
-// Debounce search
 let searchTimeout
 function onSearch() {
   clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
-    currentPage.value = 1
+    activeLetter.value = ''
     fetchItems()
   }, 300)
 }
@@ -127,26 +115,23 @@ function onSearch() {
 async function fetchItems() {
   loading.value = true
   try {
-    const res = await axios.get('/api/plex/browse', {
-      params: {
-        type: props.type,
-        search: search.value,
-        page: currentPage.value,
-        pageSize: pageSize.value
-      }
-    })
+    const params = {
+      type: props.type,
+      page: 1,
+      pageSize: 100
+    }
+    if (search.value) {
+      params.search = search.value
+    } else if (activeLetter.value) {
+      params.startsWith = activeLetter.value
+    }
+    const res = await axios.get('/api/plex/browse', { params })
     items.value = res.data.results
-    totalPages.value = res.data.totalPages
   } catch (error) {
     toast.error('Failed to fetch content')
     console.error('Error fetching items:', error)
   }
   loading.value = false
-}
-
-function changePage(page) {
-  currentPage.value = page
-  fetchItems()
 }
 
 function isInQueue(key) {
@@ -171,7 +156,7 @@ async function addToQueue(item) {
 }
 
 watch(() => props.type, async () => {
-  currentPage.value = 1
+  activeLetter.value = '#'
   search.value = ''
   await checkSectionSelected()
   if (sectionSelected.value) fetchItems()
@@ -190,6 +175,29 @@ onMounted(async () => {
 
 .browse-header {
   margin-bottom: 2rem;
+}
+
+.alpha-pagination {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.alpha-btn {
+  background: #23293a;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.7rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.alpha-btn.active, .alpha-btn:hover {
+  background: #3b82f6;
+  color: #fff;
 }
 
 .search-container {
@@ -296,32 +304,6 @@ onMounted(async () => {
 .year {
   margin: 0.5rem 0 0;
   font-size: 0.875rem;
-  color: #a0aec0;
-}
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.page-btn {
-  padding: 0.5rem 1rem;
-  background: #4299e1;
-  color: white;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
-}
-
-.page-btn:disabled {
-  background: #4a5568;
-  cursor: not-allowed;
-}
-
-.page-info {
   color: #a0aec0;
 }
 

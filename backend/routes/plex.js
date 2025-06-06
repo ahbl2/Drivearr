@@ -160,8 +160,13 @@ router.get('/browse', async (req, res) => {
             url += `&title=${encodeURIComponent(search)}`;
         }
         // Add pagination
-        url += `&X-Plex-Container-Start=${(page - 1) * pageSize}`;
-        url += `&X-Plex-Container-Size=${pageSize}`;
+        let effectivePageSize = pageSize;
+        const startsWith = (req.query.startsWith || '').toUpperCase();
+        if (startsWith) {
+            effectivePageSize = 10000; // fetch a large number to ensure all matches
+        }
+        url += `&X-Plex-Container-Start=0`;
+        url += `&X-Plex-Container-Size=${effectivePageSize}`;
 
         // Log for debugging
         if (recent) {
@@ -263,6 +268,21 @@ router.get('/browse', async (req, res) => {
                 summary: item.$.summary,
                 // Add any other fields you need
             }));
+            // Apply startsWith filtering if present
+            if (startsWith) {
+                results = results.filter(item => {
+                    if (!item.title || typeof item.title !== 'string') return false;
+                    const firstChar = item.title.trim()[0] || '';
+                    if (startsWith === '#') {
+                        return /^[0-9]/.test(firstChar);
+                    } else if (startsWith === '*') {
+                        return !/^[A-Z0-9]/i.test(firstChar);
+                    } else if (/^[A-Z]$/.test(startsWith)) {
+                        return firstChar.toUpperCase() === startsWith;
+                    }
+                    return false;
+                });
+            }
         }
 
         // Get total count for pagination
