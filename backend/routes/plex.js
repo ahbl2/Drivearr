@@ -80,19 +80,77 @@ router.get('/library', async (req, res) => {
       return res.status(500).json({ error: 'Could not find a Movies section in Plex.' });
     }
 
+    // --- Pagination, type, and search support ---
+    const type = req.query.type; // 'movie' or 'show'
+    const offset = parseInt(req.query.offset) || 0;
+    const limit = parseInt(req.query.limit) || 50;
+    const search = (req.query.search || '').toLowerCase();
+
+    // Use Plex's built-in pagination for fast loading
     const [tvRes, movieRes] = await Promise.all([
-      axios.get(`${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}`, { headers: { Accept: 'application/xml' } }),
-      axios.get(`${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}`, { headers: { Accept: 'application/xml' } }),
+      axios.get(`${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}&X-Plex-Container-Start=${offset}&X-Plex-Container-Size=${limit}`,
+        { headers: { Accept: 'application/xml' } }),
+      axios.get(`${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}&X-Plex-Container-Start=${offset}&X-Plex-Container-Size=${limit}`,
+        { headers: { Accept: 'application/xml' } }),
     ]);
 
-    // Log the raw XML response for the TV section
-    // console.log('[PlexLibrary] Raw TV XML:', tvRes.data);
+    // Make a separate request for the total count (no items, just the count)
+    let total = 0;
+    if (type === 'movie') {
+      const totalRes = await axios.get(
+        `${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}&X-Plex-Container-Start=0&X-Plex-Container-Size=0`,
+        { headers: { Accept: 'application/xml' } }
+      );
+      const totalParsed = await xml2js.parseStringPromise(totalRes.data);
+      console.log('[PlexLibrary] Movie total response:', totalParsed.MediaContainer);
+      total = parseInt(
+        (totalParsed.MediaContainer.$ && (totalParsed.MediaContainer.$.totalSize || totalParsed.MediaContainer.$.size)) ||
+        totalParsed.MediaContainer.totalSize ||
+        totalParsed.MediaContainer.size ||
+        0
+      );
+    } else if (type === 'show') {
+      const totalRes = await axios.get(
+        `${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}&X-Plex-Container-Start=0&X-Plex-Container-Size=0`,
+        { headers: { Accept: 'application/xml' } }
+      );
+      const totalParsed = await xml2js.parseStringPromise(totalRes.data);
+      console.log('[PlexLibrary] TV total response:', totalParsed.MediaContainer);
+      total = parseInt(
+        (totalParsed.MediaContainer.$ && (totalParsed.MediaContainer.$.totalSize || totalParsed.MediaContainer.$.size)) ||
+        totalParsed.MediaContainer.totalSize ||
+        totalParsed.MediaContainer.size ||
+        0
+      );
+    } else {
+      // Both
+      const [tvTotalRes, movieTotalRes] = await Promise.all([
+        axios.get(`${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}&X-Plex-Container-Start=0&X-Plex-Container-Size=0`,
+          { headers: { Accept: 'application/xml' } }),
+        axios.get(`${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}&X-Plex-Container-Start=0&X-Plex-Container-Size=0`,
+          { headers: { Accept: 'application/xml' } })
+      ]);
+      const tvTotalParsed = await xml2js.parseStringPromise(tvTotalRes.data);
+      const movieTotalParsed = await xml2js.parseStringPromise(movieTotalRes.data);
+      console.log('[PlexLibrary] TV total response:', tvTotalParsed.MediaContainer);
+      console.log('[PlexLibrary] Movie total response:', movieTotalParsed.MediaContainer);
+      const tvTotal = parseInt(
+        (tvTotalParsed.MediaContainer.$ && (tvTotalParsed.MediaContainer.$.totalSize || tvTotalParsed.MediaContainer.$.size)) ||
+        tvTotalParsed.MediaContainer.totalSize ||
+        tvTotalParsed.MediaContainer.size ||
+        0
+      );
+      const movieTotal = parseInt(
+        (movieTotalParsed.MediaContainer.$ && (movieTotalParsed.MediaContainer.$.totalSize || movieTotalParsed.MediaContainer.$.size)) ||
+        movieTotalParsed.MediaContainer.totalSize ||
+        movieTotalParsed.MediaContainer.size ||
+        0
+      );
+      total = tvTotal + movieTotal;
+    }
 
     const tvParsed = await xml2js.parseStringPromise(tvRes.data);
     const movieParsed = await xml2js.parseStringPromise(movieRes.data);
-
-    // Log the parsed TV show data before mapping
-    // console.log('[PlexLibrary] Parsed TV MediaContainer:', JSON.stringify(tvParsed.MediaContainer, null, 2));
 
     let tvShows = [];
     if (tvParsed.MediaContainer.Directory) {
@@ -114,26 +172,27 @@ router.get('/library', async (req, res) => {
     let moviesList = movieParsed.MediaContainer.Video?.map(movie => ({
       title: movie.$.title,
       key: movie.$.key,
-      thumb: `${baseUrl}${movie.$.thumb}?X-Plex-Token=${token}`,
+      thumb: movie.$.thumb ? `${baseUrl}${movie.$.thumb}?X-Plex-Token=${token}` : '',
       type: 'movie'
     })) || [];
-
-    // --- Pagination, type, and search support ---
-    const type = req.query.type; // 'movie' or 'show'
-    const offset = parseInt(req.query.offset) || 0;
-    const limit = parseInt(req.query.limit) || 50;
-    const search = (req.query.search || '').toLowerCase();
 
     let items = [];
     if (type === 'movie') items = moviesList;
     else if (type === 'show') items = tvShows;
     else items = [...tvShows, ...moviesList];
 
+    // Filter by search if needed
     if (search) {
       items = items.filter(item => item.title.toLowerCase().includes(search));
     }
-    const total = items.length;
-    const paged = items.slice(offset, offset + limit);
+    // No in-memory slice needed, Plex already paginates
+    const paged = items;
+
+    // Fallback if total is 0, NaN, or missing (must be after items is defined)
+    if (!total || isNaN(total)) {
+      total = items.length;
+      console.log('[PlexLibrary] Fallback to items.length for total:', total);
+    }
 
     res.json({
       results: paged,
