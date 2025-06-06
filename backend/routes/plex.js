@@ -138,6 +138,7 @@ router.get('/browse', async (req, res) => {
         const search = req.query.search || '';
         const page = parseInt(req.query.page) || 1;
         const pageSize = parseInt(req.query.pageSize) || 50;
+        const recent = req.query.recent === 'true';
 
         // Get the correct section key for the type
         const sectionKey = await getSectionKeyForType(config, type);
@@ -148,16 +149,24 @@ router.get('/browse', async (req, res) => {
         // Build the Plex API URL
         const protocol = config.PLEX_SSL ? 'https' : 'http';
         const baseUrl = `${protocol}://${config.PLEX_HOST}:${config.PLEX_PORT}`;
-        let url = `${baseUrl}/library/sections/${sectionKey}/all?X-Plex-Token=${config.PLEX_TOKEN}`;
-        
-        // Add search if provided
-        if (search) {
+        let url;
+        if (recent) {
+            url = `${baseUrl}/library/sections/${sectionKey}/recentlyAdded?X-Plex-Token=${config.PLEX_TOKEN}`;
+        } else {
+            url = `${baseUrl}/library/sections/${sectionKey}/all?X-Plex-Token=${config.PLEX_TOKEN}`;
+        }
+        // Add search if provided (only works for /all)
+        if (search && !recent) {
             url += `&title=${encodeURIComponent(search)}`;
         }
-
         // Add pagination
         url += `&X-Plex-Container-Start=${(page - 1) * pageSize}`;
         url += `&X-Plex-Container-Size=${pageSize}`;
+
+        // Log for debugging
+        if (recent) {
+            console.log(`[Plex /browse] sectionKey: ${sectionKey}, type: ${type}, url: ${url}`);
+        }
 
         // Fetch from Plex
         const response = await axios.get(url, {
@@ -167,32 +176,104 @@ router.get('/browse', async (req, res) => {
         // Parse the XML response
         const parsed = await xml2js.parseStringPromise(response.data);
         let items = [];
-        if (type === 'show') {
-            items = parsed.MediaContainer.Directory || [];
+        if (recent) {
+            // recentlyAdded returns a mix of types
+            let allItems = [];
+            if (parsed.MediaContainer.Video) {
+                allItems = allItems.concat(parsed.MediaContainer.Video);
+            }
+            if (parsed.MediaContainer.Directory) {
+                allItems = allItems.concat(parsed.MediaContainer.Directory);
+            }
+            if (type === 'movie') {
+                items = allItems.filter(item => item.$.type === 'movie');
+                // Sort by addedAt if available (descending)
+                items.sort((a, b) => {
+                    const aTime = parseInt(a.$.addedAt || a.$.added_at || 0);
+                    const bTime = parseInt(b.$.addedAt || b.$.added_at || 0);
+                    return bTime - aTime;
+                });
+                items = items.slice(0, pageSize);
+            } else if (type === 'show') {
+                // Paginate through recentlyAdded to find 20 unique series
+                const seen = new Set();
+                let shows = [];
+                let start = 0;
+                const batchSize = 100;
+                let more = true;
+                while (shows.length < pageSize && more) {
+                    let batchUrl = `${baseUrl}/library/sections/${sectionKey}/recentlyAdded?X-Plex-Token=${config.PLEX_TOKEN}`;
+                    batchUrl += `&X-Plex-Container-Start=${start}`;
+                    batchUrl += `&X-Plex-Container-Size=${batchSize}`;
+                    const batchResponse = await axios.get(batchUrl, { headers: { Accept: 'application/xml' } });
+                    const batchParsed = await xml2js.parseStringPromise(batchResponse.data);
+                    let episodes = [];
+                    if (batchParsed.MediaContainer.Video) {
+                        episodes = episodes.concat(batchParsed.MediaContainer.Video.filter(item => item.$.type === 'episode'));
+                    }
+                    // Sort by addedAt if available (descending)
+                    episodes.sort((a, b) => {
+                        const aTime = parseInt(a.$.addedAt || a.$.added_at || 0);
+                        const bTime = parseInt(b.$.addedAt || b.$.added_at || 0);
+                        return bTime - aTime;
+                    });
+                    for (const ep of episodes) {
+                        const showKey = ep.$.grandparentRatingKey;
+                        if (showKey && !seen.has(showKey)) {
+                            seen.add(showKey);
+                            shows.push({
+                                key: showKey,
+                                title: ep.$.grandparentTitle,
+                                type: 'show',
+                                thumb_url: ep.$.grandparentThumb ? `${baseUrl}${ep.$.grandparentThumb}?X-Plex-Token=${config.PLEX_TOKEN}` : null,
+                                year: ep.$.grandparentYear,
+                                summary: ep.$.grandparentSummary || '',
+                            });
+                        }
+                        if (shows.length >= pageSize) break;
+                    }
+                    // If we got less than batchSize, there are no more episodes
+                    if (episodes.length < batchSize) {
+                        more = false;
+                    }
+                    start += batchSize;
+                }
+                items = shows;
+            }
         } else {
-            items = parsed.MediaContainer.Video || [];
+            if (type === 'show') {
+                items = parsed.MediaContainer.Directory || [];
+            } else {
+                items = parsed.MediaContainer.Video || [];
+            }
         }
 
         // Transform the items to match your frontend format
-        const results = items.map(item => ({
-            key: item.$.ratingKey,
-            title: item.$.title,
-            type: type,
-            thumb_url: item.$.thumb ? `${baseUrl}${item.$.thumb}?X-Plex-Token=${config.PLEX_TOKEN}` : null,
-            year: item.$.year,
-            summary: item.$.summary,
-            // Add any other fields you need
-        }));
+        let results;
+        if (recent && type === 'show') {
+            // Already processed as custom show objects
+            results = items;
+        } else {
+            results = items.map(item => ({
+                key: item.$.ratingKey,
+                title: item.$.title,
+                type: type,
+                thumb_url: item.$.thumb ? `${baseUrl}${item.$.thumb}?X-Plex-Token=${config.PLEX_TOKEN}` : null,
+                year: item.$.year,
+                summary: item.$.summary,
+                // Add any other fields you need
+            }));
+        }
 
         // Get total count for pagination
         const totalSize = parseInt(parsed.MediaContainer.$.totalSize) || 0;
 
         res.json({
             results,
-            total: totalSize,
+            total: results.length,
             page,
             pageSize,
-            totalPages: Math.ceil(totalSize / pageSize)
+            totalPages: Math.ceil(results.length / pageSize)
         });
 
     } catch (error) {

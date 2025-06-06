@@ -114,8 +114,8 @@ function onSearch() {
   searchTimeout = setTimeout(async () => {
     try {
       const [movieRes, showRes] = await Promise.all([
-        axios.get('/api/plex/browse', { params: { type: 'movie', search: search.value, pageSize: 15, page: 1 } }),
-        axios.get('/api/plex/browse', { params: { type: 'show', search: search.value, pageSize: 15, page: 1 } })
+        axios.get('/api/plex/browse', { params: { type: 'movie', search: search.value, pageSize: 20, page: 1 } }),
+        axios.get('/api/plex/browse', { params: { type: 'show', search: search.value, pageSize: 20, page: 1 } })
       ])
       searchResults.value = [
         ...(showRes.data.results || []).map(item => ({ ...item, type: 'show' })),
@@ -132,13 +132,13 @@ onMounted(async () => {
   loadingTV.value = true
   loadingMovies.value = true
   try {
-    const tvRes = await axios.get('/api/plex/browse', { params: { type: 'show', pageSize: 15, page: 1 } })
+    const tvRes = await axios.get('/api/plex/browse', { params: { type: 'show', pageSize: 20, page: 1, recent: true } })
     newestTV.value = tvRes.data.results || []
   } finally {
     loadingTV.value = false
   }
   try {
-    const movieRes = await axios.get('/api/plex/browse', { params: { type: 'movie', pageSize: 15, page: 1 } })
+    const movieRes = await axios.get('/api/plex/browse', { params: { type: 'movie', pageSize: 20, page: 1, recent: true } })
     newestMovies.value = movieRes.data.results || []
   } finally {
     loadingMovies.value = false
@@ -177,15 +177,19 @@ onMounted(async () => {
 }
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 .media-card {
   background: #2d3748;
   border-radius: 0.5rem;
   overflow: hidden;
   transition: transform 0.2s;
+  min-width: 0;
+  width: 100%;
 }
 .media-card:hover {
   transform: translateY(-4px);
@@ -194,6 +198,8 @@ onMounted(async () => {
   position: relative;
   aspect-ratio: 2/3;
   background: #1a202c;
+  min-width: 0;
+  width: 100%;
 }
 .poster {
   width: 100%;

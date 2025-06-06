@@ -213,15 +213,17 @@ onMounted(() => {
   background: #23293a;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-  min-width: 340px;
   padding: 2.5rem 2rem 2rem 2rem;
   color: #fff;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
   width: 100%;
+  box-sizing: border-box;
   align-items: center;
+  max-width: 900px;
+  align-self: stretch;
+  margin: 0;
 }
 label {
   color: #bfc7d5;
@@ -258,7 +260,6 @@ input:focus, select:focus {
   transition: background 0.2s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   width: 100%;
-  max-width: 340px;
 }
 .save-btn:hover {
   background: #2563eb;
@@ -295,5 +296,20 @@ input:focus, select:focus {
   margin-top: -0.7rem;
   text-align: left;
   width: 100%;
+}
+@media (max-width: 900px) {
+  .settings-form {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 1rem 0.5rem;
+  }
+}
+@media (max-width: 600px) {
+  .settings-form {
+    padding: 0.2rem 0.2rem;
+  }
 }
 </style> 

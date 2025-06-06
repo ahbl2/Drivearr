@@ -14,8 +14,8 @@ import SettingsSidebar from './SettingsSidebar.vue'
 <style scoped>
 .settings-layout {
   display: flex;
-  max-width: 700px;
-  margin: 3rem auto 0 auto;
+  width: 100%;
+  box-sizing: border-box;
   background: none;
 }
 .settings-content {

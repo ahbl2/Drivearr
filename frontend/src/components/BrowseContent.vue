@@ -208,9 +208,11 @@ onMounted(async () => {
 
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .media-card {
@@ -218,6 +220,8 @@ onMounted(async () => {
   border-radius: 0.5rem;
   overflow: hidden;
   transition: transform 0.2s;
+  min-width: 0;
+  width: 100%;
 }
 
 .media-card:hover {
@@ -228,6 +232,8 @@ onMounted(async () => {
   position: relative;
   aspect-ratio: 2/3;
   background: #1a202c;
+  min-width: 0;
+  width: 100%;
 }
 
 .poster {
@@ -333,5 +339,12 @@ onMounted(async () => {
   text-align: center;
   font-size: 1.2rem;
   margin: 2rem 0;
+}
+
+@media (max-width: 900px) {
+  .browse-content { padding: 1rem 0.5rem; }
+}
+@media (max-width: 600px) {
+  .browse-content { padding: 0.2rem 0.2rem; }
 }
 </style> 

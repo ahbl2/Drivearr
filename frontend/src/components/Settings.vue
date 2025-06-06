@@ -43,6 +43,11 @@ function notify(msg, type) {
 }
 .settings-content {
   flex: 1;
-  padding: 2.5rem 0 0 2.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 </style> 

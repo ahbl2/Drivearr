@@ -149,9 +149,8 @@ onUnmounted(() => {
 <style scoped>
 .sync-queue {
   margin-top: 2rem;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 .queue-title {
   color: #bfc7d5;
@@ -207,6 +206,12 @@ onUnmounted(() => {
   position: relative;
   transition: box-shadow 0.15s, transform 0.15s;
   min-width: 0;
+  word-break: break-word;
+}
+@media (max-width: 900px) {
+  .queue-card {
+    padding: 0.7rem 0.5rem;
+  }
 }
 .queue-card:hover {
   box-shadow: 0 6px 18px rgba(0,0,0,0.18);

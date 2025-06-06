@@ -6,18 +6,6 @@
         <span class="app-title">Drivearr</span>
       </div>
       <div class="header-right">
-        <div class="search-bar-wrapper">
-          <input 
-            v-model="globalSearch" 
-            @input="onGlobalSearch" 
-            class="search-bar" 
-            type="text" 
-            placeholder="Search all media..." 
-          />
-          <button v-if="globalSearch" @click="clearGlobalSearch" class="clear-search">
-            <i class="fa fa-times"></i>
-          </button>
-        </div>
         <i class="fa fa-bell header-icon"></i>
         <div class="user-menu-wrapper">
           <i class="fa fa-user-circle header-icon user-icon" />
@@ -66,6 +54,7 @@ html, body, .main-header, .sidebar, .main-content, .content-area, button, input,
 body {
   margin: 0;
   background: #181c24;
+  overflow-x: hidden;
 }
 .app-layout {
   display: flex;
@@ -244,12 +233,25 @@ body {
   background: #fff;
   min-height: calc(100vh - 56px);
   box-shadow: 0 0 8px rgba(0,0,0,0.03);
+  display: flex;
+  flex-direction: column;
 }
 .content-area {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 2.5rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 2.5rem 2.5vw 2.5rem 2.5vw;
   background: transparent;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 12px;
+  margin-right: 12px;
+  max-width: 100vw !important;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 button {
   background: none;
@@ -262,5 +264,37 @@ button {
 }
 button:focus {
   outline: 2px solid #3b82f6;
+}
+@media (max-width: 900px) {
+  .sidebar {
+    width: 60px;
+    min-width: 60px;
+  }
+  .main-content {
+    margin-left: 60px;
+  }
+  .content-area {
+    padding: 1rem 0.5rem;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    display: none;
+  }
+  .main-content {
+    margin-left: 0;
+  }
+  .content-area {
+    padding: 0.2rem 0.2rem;
+  }
+}
+.content-area, .dashboard, .browse-content {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 12px;
+  margin-right: 12px;
+  max-width: 100vw !important;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 </style> 

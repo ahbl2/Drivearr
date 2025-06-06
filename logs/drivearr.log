@@ -5743,3 +5743,20 @@
 {"timestamp":"2025-06-06T17:25:06.548Z","level":"info","message":"Sync service initialized"}
 {"timestamp":"2025-06-06T17:38:48.700Z","level":"info","message":"Database initialized successfully"}
 {"timestamp":"2025-06-06T17:38:48.715Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-06T18:06:13.387Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-06T18:06:13.406Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-06T18:38:25.059Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-06T18:38:25.074Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-06T19:54:12.351Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-06T19:54:12.365Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-06T20:00:46.394Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-06T20:00:46.412Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-06T20:00:50.545Z","level":"error","message":"Error in /browse route: TypeError: Cannot read properties of undefined (reading 'ratingKey')\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\plex.js:236:25\n    at Array.map (<anonymous>)\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\plex.js:235:31\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"}
+{"timestamp":"2025-06-06T20:01:07.554Z","level":"error","message":"Error in /browse route: TypeError: Cannot read properties of undefined (reading 'ratingKey')\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\plex.js:236:25\n    at Array.map (<anonymous>)\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\plex.js:235:31\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"}
+{"timestamp":"2025-06-06T20:01:30.626Z","level":"error","message":"Error in /browse route: TypeError: Cannot read properties of undefined (reading 'ratingKey')\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\plex.js:236:25\n    at Array.map (<anonymous>)\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\plex.js:235:31\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)"}
+{"timestamp":"2025-06-06T20:04:15.012Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-06T20:04:15.039Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-06T20:11:45.011Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-06T20:11:45.027Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-06T20:15:25.640Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-06T20:15:25.662Z","level":"info","message":"Sync service initialized"}

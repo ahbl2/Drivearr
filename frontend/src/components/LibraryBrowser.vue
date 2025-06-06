@@ -83,9 +83,11 @@ onMounted(async () => {
 }
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 .media-card {
   background: #23293a;
@@ -99,6 +101,7 @@ onMounted(async () => {
   align-items: center;
   position: relative;
   min-width: 0;
+  width: 100%;
 }
 .media-card:hover {
   transform: translateY(-4px) scale(1.03);
@@ -112,6 +115,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
 }
 .poster {
   width: 100%;
