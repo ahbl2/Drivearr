@@ -53,7 +53,7 @@ router.post('/start', async (req, res) => {
     syncQueue = []; // Clear the queue after successful sync
     res.json(result);
   } catch (err) {
-    logger.error('Sync error:', err);
+    logger.error('Sync error: ' + formatError(err));
     res.status(500).json({ error: 'Failed to sync files.' });
   }
 });
@@ -61,5 +61,9 @@ router.post('/start', async (req, res) => {
 router.get('/status', (req, res) => {
   res.json(syncQueueToDrive.getSyncStatus ? syncQueueToDrive.getSyncStatus() : {});
 });
+
+function formatError(error) {
+    return error && error.stack ? error.stack : String(error);
+}
 
 module.exports = router;

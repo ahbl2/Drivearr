@@ -13,18 +13,28 @@ function getTimestamp() {
 }
 
 function log(level, message, meta = null) {
+  let metaOut = meta;
+  if (meta instanceof Error) {
+    metaOut = meta.stack || meta.toString();
+  } else if (meta && typeof meta !== 'string') {
+    try {
+      metaOut = JSON.stringify(meta);
+    } catch (e) {
+      metaOut = String(meta);
+    }
+  }
   const entry = {
     timestamp: getTimestamp(),
     level,
     message,
-    ...(meta ? { meta } : {})
+    ...(metaOut ? { meta: metaOut } : {})
   }
   const line = JSON.stringify(entry)
   fs.appendFileSync(logFile, line + '\n')
   if (level === 'error') {
-    console.error(`[${entry.timestamp}] [${level.toUpperCase()}]`, message, meta || '')
+    console.error(`[${entry.timestamp}] [${level.toUpperCase()}]`, message, metaOut || '')
   } else {
-    console.log(`[${entry.timestamp}] [${level.toUpperCase()}]`, message, meta || '')
+    console.log(`[${entry.timestamp}] [${level.toUpperCase()}]`, message, metaOut || '')
   }
 }
 

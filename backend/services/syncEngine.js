@@ -2,6 +2,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const logger = require('./logger');
 const { markInProgress, markCompleted, readManifest } = require('./manifestManager');
+const axios = require('axios');
 
 // In-memory sync status
 let syncStatus = {
@@ -45,6 +46,22 @@ function isMovieOnDrive(queueItem, scannedDriveItems) {
     item.type === 'movie' &&
     item.title.toLowerCase() === queueItem.title.toLowerCase()
   );
+}
+
+function formatError(error) {
+  return error && error.stack ? error.stack : String(error);
+}
+
+// Helper to refresh Plex section
+async function refreshPlexSection(sectionId, plexHost, plexPort, plexToken, useSSL = false) {
+    const protocol = useSSL ? 'https' : 'http';
+    const url = `${protocol}://${plexHost}:${plexPort}/library/sections/${sectionId}/refresh?X-Plex-Token=${plexToken}`;
+    try {
+        await axios.get(url);
+        logger.info(`Triggered refresh for Plex section ${sectionId}`);
+    } catch (err) {
+        logger.error(`Failed to refresh Plex section ${sectionId}: ${err.message}`);
+    }
 }
 
 async function syncQueueToDrive(queue, scannedDrive, options) {
@@ -129,7 +146,7 @@ async function syncQueueToDrive(queue, scannedDrive, options) {
         } catch (err) {
           attempts++;
           lastError = err;
-          logger.error(`Retry ${attempts} for copying ${fileName}:`, err);
+          logger.error(`Retry ${attempts} for copying ${fileName}: ` + formatError(err));
           if (attempts < 3) await new Promise(res => setTimeout(res, 1000));
         }
       }
@@ -137,13 +154,25 @@ async function syncQueueToDrive(queue, scannedDrive, options) {
       results.copied.push({ ...item, destPath });
         await markCompleted(options.usbRoot, item);
         updateSyncStatusItem(itemKey, { status: 'done', progress: 100 });
+
+        // Trigger Plex refresh for the correct section
+        const sectionId = item.type === 'movie' ? '1' : '2'; // Adjust if needed
+        if (options.plexHost && options.plexPort && options.plexToken) {
+            await refreshPlexSection(
+                sectionId,
+                options.plexHost,
+                options.plexPort,
+                options.plexToken,
+                options.plexSSL
+            );
+        }
       } else {
-        logger.error(`Failed to copy ${fileName} after 3 attempts:`, lastError);
+        logger.error(`Failed to copy ${fileName} after 3 attempts: ` + formatError(lastError));
         results.errors.push({ item, error: lastError.message });
         updateSyncStatusItem(itemKey, { status: 'error', error: lastError.message });
       }
     } catch (err) {
-      logger.error(`Error copying ${fileName}:`, err);
+      logger.error(`Error copying ${fileName}: ` + formatError(err));
       results.errors.push({ item, error: err.message });
       updateSyncStatusItem(itemKey, { status: 'error', error: err.message });
     }

@@ -23,6 +23,20 @@
 
     <label><input type="checkbox" v-model="form.PLEX_SSL" /> Use SSL (HTTPS)</label>
 
+    <label>Movies Section:</label>
+    <select v-model="form.PLEX_MOVIES_SECTION_KEY">
+      <option v-for="section in movieSections" :key="section.$.key" :value="section.$.key">
+        {{ section.$.title }}
+      </option>
+    </select>
+
+    <label>TV Shows Section:</label>
+    <select v-model="form.PLEX_SHOWS_SECTION_KEY">
+      <option v-for="section in showSections" :key="section.$.key" :value="section.$.key">
+        {{ section.$.title }}
+      </option>
+    </select>
+
     <div class="note">Media source paths are fetched from Plex automatically.</div>
 
     <button class="save-btn" type="submit">Save Plex Settings</button>
@@ -37,7 +51,9 @@ const form = ref({
   PLEX_TOKEN: '',
   PLEX_HOST: '',
   PLEX_PORT: 32400,
-  PLEX_SSL: false
+  PLEX_SSL: false,
+  PLEX_MOVIES_SECTION_KEY: '',
+  PLEX_SHOWS_SECTION_KEY: ''
 })
 
 const servers = ref([])
@@ -52,6 +68,9 @@ const props = defineProps({
 })
 
 const PLEX_CLIENT_ID = 'Drivearr-Client-001'
+
+const movieSections = ref([])
+const showSections = ref([])
 
 const authenticateWithPlex = async () => {
   authenticating.value = true
@@ -79,6 +98,7 @@ const authenticateWithPlex = async () => {
           if (authWindow) authWindow.close()
           if (props.notify) props.notify('Successfully authenticated with Plex.tv!', 'success')
           await fetchServers()
+          await fetchSections()
         }
       } catch (err) {
         // Only show error if it's not a 404 (which means auth is still pending)
@@ -135,9 +155,21 @@ const onServerChange = () => {
   if (selectedServer.value) fillServerFields(selectedServer.value, true)
 }
 
+const fetchSections = async () => {
+  if (!form.value.PLEX_TOKEN || !form.value.PLEX_HOST || !form.value.PLEX_PORT) return
+  try {
+    const { data } = await axios.get('/api/plex/sections')
+    movieSections.value = data.filter(s => s.$.type === 'movie')
+    showSections.value = data.filter(s => s.$.type === 'show')
+  } catch (err) {
+    // Optionally notify
+  }
+}
+
 watch(() => form.value.PLEX_TOKEN, (newToken, oldToken) => {
   if (!initialLoad && newToken && newToken !== oldToken) {
     fetchServers(true)
+    fetchSections()
   }
 })
 
@@ -159,8 +191,11 @@ const loadConfig = async () => {
     form.value.PLEX_HOST = data.PLEX_HOST || ''
     form.value.PLEX_PORT = data.PLEX_PORT || 32400
     form.value.PLEX_SSL = !!data.PLEX_SSL
+    form.value.PLEX_MOVIES_SECTION_KEY = data.PLEX_MOVIES_SECTION_KEY || ''
+    form.value.PLEX_SHOWS_SECTION_KEY = data.PLEX_SHOWS_SECTION_KEY || ''
     if (form.value.PLEX_TOKEN) {
       await fetchServers(false)
+      await fetchSections()
     }
     initialLoad = false
   } catch (err) {

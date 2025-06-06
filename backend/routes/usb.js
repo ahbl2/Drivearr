@@ -30,7 +30,7 @@ router.get('/scanned', async (req, res) => {
 
     res.json(result)
   } catch (err) {
-    logger.error(err)
+    logger.error(formatError(err))
     res.status(500).json({ error: 'Drive scan failed' })
   }
 })
@@ -43,9 +43,13 @@ router.post('/remove', async (req, res) => {
     await fs.remove(item.path)
     res.json({ success: true })
   } catch (err) {
-    logger.error('Remove error:', err)
+    logger.error('Remove error: ' + formatError(err))
     res.status(500).json({ error: 'Failed to delete item' })
   }
 })
+
+function formatError(error) {
+    return error && error.stack ? error.stack : String(error);
+}
 
 module.exports = router

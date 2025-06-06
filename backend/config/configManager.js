@@ -17,6 +17,17 @@ async function saveConfig(newConfig) {
   await fs.writeJson(configPath, newConfig, { spaces: 2 })
 }
 
+function getDefaultConfig() {
+  return {
+    PLEX_TOKEN: '',
+    PLEX_HOST: '',
+    PLEX_PORT: 32400,
+    PLEX_SSL: false,
+    PLEX_MOVIES_SECTION_KEY: '',
+    PLEX_SHOWS_SECTION_KEY: ''
+  };
+}
+
 module.exports = {
   loadConfig,
   saveConfig,

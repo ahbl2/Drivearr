@@ -2,5 +2,7 @@
   "PLEX_TOKEN": "ggbxGfxJWfM18YFnMAw4",
   "PLEX_HOST": "192.168.1.234",
   "PLEX_PORT": 32400,
-  "PLEX_SSL": false
+  "PLEX_SSL": false,
+  "PLEX_MOVIES_SECTION_KEY": "1",
+  "PLEX_SHOWS_SECTION_KEY": "2"
 }

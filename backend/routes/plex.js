@@ -4,222 +4,201 @@ const axios = require('axios');
 const xml2js = require('xml2js');
 const logger = require('../services/logger');
 const { loadConfig } = require('../config/configManager');
+const databaseService = require('../services/databaseService');
 
 // Plex section keys cache
 let sectionCache = null;
 
 async function getPlexSections(config) {
-  const protocol = config.PLEX_SSL ? 'https' : 'http';
-  const baseUrl = `${protocol}://${config.PLEX_HOST}:${config.PLEX_PORT}`;
-  const token = config.PLEX_TOKEN;
-  const url = `${baseUrl}/library/sections?X-Plex-Token=${token}`;
-  const res = await axios.get(url, {
-    headers: { Accept: 'application/xml' }
-  });
-  // Log the raw response for debugging
-  console.log('[PlexLibrary] Raw response:', res.data);
-  const parsed = await xml2js.parseStringPromise(res.data);
-  const dirs = parsed.MediaContainer.Directory;
+    // Try to get from database cache first
+    const cachedResponse = await databaseService.getCachedResponse(
+        '/library/sections',
+        { token: config.PLEX_TOKEN }
+    );
 
-  // Log all available Plex library sections (title and type) with clear markers
-  console.log('[PlexLibrary] === Available Plex Library Sections ===');
-  dirs.forEach(d => {
-    console.log(`[PlexLibrary] Section: Title="${d.$.title}", Type="${d.$.type}"`);
-  });
-  console.log('[PlexLibrary] === End of Section List ===');
+    if (cachedResponse) {
+        const parsed = await xml2js.parseStringPromise(cachedResponse);
+        return parsed.MediaContainer.Directory;
+    }
 
-  // More robust: find TV and Movie sections by type, prefer title match but fallback to first of type
-  const tvSection =
-    dirs.find(d => d.$.type === 'show' && d.$.title.toLowerCase() === 'tv shows') ||
-    dirs.find(d => d.$.type === 'show');
-  const movieSection =
-    dirs.find(d => d.$.type === 'movie' && d.$.title.toLowerCase() === 'movies') ||
-    dirs.find(d => d.$.type === 'movie');
+    // If not in cache, fetch from Plex
+    const protocol = config.PLEX_SSL ? 'https' : 'http';
+    const baseUrl = `${protocol}://${config.PLEX_HOST}:${config.PLEX_PORT}`;
+    const url = `${baseUrl}/library/sections?X-Plex-Token=${config.PLEX_TOKEN}`;
+    
+    const res = await axios.get(url, {
+        headers: { Accept: 'application/xml' }
+    });
 
-  // Log detected section keys and titles
-  console.log('[PlexLibrary] Detected TV section:', tvSection?.$.key, tvSection?.$.title);
-  console.log('[PlexLibrary] Detected Movie section:', movieSection?.$.key, movieSection?.$.title);
+    // Cache the response
+    await databaseService.cacheResponse(
+        '/library/sections',
+        { token: config.PLEX_TOKEN },
+        res.data,
+        3600 // 1 hour cache
+    );
 
-  return {
-    tv: tvSection?.$.key,
-    tvPath: tvSection?.Location?.[0]?.$.path,
-    movies: movieSection?.$.key,
-    moviesPath: movieSection?.Location?.[0]?.$.path,
-    baseUrl,
-    token
-  };
+    const parsed = await xml2js.parseStringPromise(res.data);
+    return parsed.MediaContainer.Directory;
+}
+
+function formatError(error) {
+    return error && error.stack ? error.stack : String(error);
+}
+
+// Endpoint to get all Plex sections
+router.get('/sections', async (req, res) => {
+    try {
+        const config = await loadConfig();
+        if (!config) {
+            return res.status(400).json({ error: 'Plex is not configured (no config file).' });
+        }
+        if (!config.PLEX_HOST || !config.PLEX_PORT || !config.PLEX_TOKEN) {
+            return res.status(400).json({ error: 'Plex is not configured.' });
+        }
+        const sections = await getPlexSections(config);
+        res.json(sections);
+    } catch (error) {
+        logger.error('Error in /sections route: ' + formatError(error));
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Helper to get the correct section key for a type
+async function getSectionKeyForType(config, type) {
+    if (type === 'movie' && config.PLEX_MOVIES_SECTION_KEY) return config.PLEX_MOVIES_SECTION_KEY;
+    if (type === 'show' && config.PLEX_SHOWS_SECTION_KEY) return config.PLEX_SHOWS_SECTION_KEY;
+    const sections = await getPlexSections(config);
+    const section = sections.find(s => s.$.type === type);
+    return section ? section.$.key : null;
 }
 
 router.get('/library', async (req, res) => {
-  try {
-    const config = await loadConfig();
-    if (!config) {
-      return res.status(400).json({ error: 'Plex is not configured (no config file).' });
+    try {
+        const config = await loadConfig();
+        if (!config) {
+            return res.status(400).json({ error: 'Plex is not configured (no config file).' });
+        }
+        if (!config.PLEX_HOST || !config.PLEX_PORT || !config.PLEX_TOKEN) {
+            return res.status(400).json({ error: 'Plex is not configured.' });
+        }
+
+        const type = req.query.type; // 'movie' or 'show'
+        const search = (req.query.search || '').toLowerCase();
+        const startsWith = (req.query.startsWith || '').toLowerCase();
+
+        // Only get from database
+        let items;
+        if (search) {
+            items = await databaseService.searchMediaItems(search, type);
+        } else if (startsWith) {
+            items = await databaseService.getMediaItems(type);
+            if (startsWith === '#') {
+                items = items.filter(item => /^[0-9]/.test(item.title));
+            } else {
+                items = items.filter(item => item.title[0].toLowerCase() === startsWith);
+            }
+        } else {
+            items = await databaseService.getMediaItems(type);
+        }
+
+        // Apply filters (redundant, but keep for safety)
+        if (search) {
+            items = items.filter(item => item.title.toLowerCase().includes(search));
+        }
+        if (startsWith) {
+            if (startsWith === '#') {
+                items = items.filter(item => /^[0-9]/.test(item.title));
+            } else {
+                items = items.filter(item => item.title[0].toLowerCase() === startsWith);
+            }
+        }
+
+        res.json({
+            results: items,
+            total: items.length
+        });
+    } catch (error) {
+        logger.error('Error in /library route: ' + formatError(error));
+        res.status(500).json({ error: 'Internal server error' });
     }
-    if (!config.PLEX_HOST || !config.PLEX_PORT || !config.PLEX_TOKEN) {
-      return res.status(400).json({ error: 'Plex is not configured.' });
+});
+
+router.get('/browse', async (req, res) => {
+    try {
+        const config = await loadConfig();
+        if (!config) {
+            return res.status(400).json({ error: 'Plex is not configured (no config file).' });
+        }
+        if (!config.PLEX_HOST || !config.PLEX_PORT || !config.PLEX_TOKEN) {
+            return res.status(400).json({ error: 'Plex is not configured.' });
+        }
+
+        const type = req.query.type; // 'movie' or 'show'
+        const search = req.query.search || '';
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 50;
+
+        // Get the correct section key for the type
+        const sectionKey = await getSectionKeyForType(config, type);
+        if (!sectionKey) {
+            return res.status(400).json({ error: `No Plex section found for type: ${type}` });
+        }
+
+        // Build the Plex API URL
+        const protocol = config.PLEX_SSL ? 'https' : 'http';
+        const baseUrl = `${protocol}://${config.PLEX_HOST}:${config.PLEX_PORT}`;
+        let url = `${baseUrl}/library/sections/${sectionKey}/all?X-Plex-Token=${config.PLEX_TOKEN}`;
+        
+        // Add search if provided
+        if (search) {
+            url += `&title=${encodeURIComponent(search)}`;
+        }
+
+        // Add pagination
+        url += `&X-Plex-Container-Start=${(page - 1) * pageSize}`;
+        url += `&X-Plex-Container-Size=${pageSize}`;
+
+        // Fetch from Plex
+        const response = await axios.get(url, {
+            headers: { Accept: 'application/xml' }
+        });
+
+        // Parse the XML response
+        const parsed = await xml2js.parseStringPromise(response.data);
+        let items = [];
+        if (type === 'show') {
+            items = parsed.MediaContainer.Directory || [];
+        } else {
+            items = parsed.MediaContainer.Video || [];
+        }
+
+        // Transform the items to match your frontend format
+        const results = items.map(item => ({
+            key: item.$.ratingKey,
+            title: item.$.title,
+            type: type,
+            thumb_url: item.$.thumb ? `${baseUrl}${item.$.thumb}?X-Plex-Token=${config.PLEX_TOKEN}` : null,
+            year: item.$.year,
+            summary: item.$.summary,
+            // Add any other fields you need
+        }));
+
+        // Get total count for pagination
+        const totalSize = parseInt(parsed.MediaContainer.$.totalSize) || 0;
+
+        res.json({
+            results,
+            total: totalSize,
+            page,
+            pageSize,
+            totalPages: Math.ceil(totalSize / pageSize)
+        });
+
+    } catch (error) {
+        logger.error('Error in /browse route: ' + formatError(error));
+        res.status(500).json({ error: 'Internal server error' });
     }
-    // Log the config being used
-    console.log('[PlexLibrary] Using config:', {
-      host: config.PLEX_HOST,
-      port: config.PLEX_PORT,
-      ssl: config.PLEX_SSL,
-      token: config.PLEX_TOKEN && config.PLEX_TOKEN.substring(0, 6) + '...'
-    });
-    if (!sectionCache) {
-      sectionCache = await getPlexSections(config);
-    }
-    const { baseUrl, token, tv, movies } = sectionCache;
-    console.log('[PlexLibrary] baseUrl:', baseUrl, 'tv:', tv, 'movies:', movies);
-
-    // Error handling for missing section keys
-    if (!tv) {
-      return res.status(500).json({ error: 'Could not find a TV Shows section in Plex.' });
-    }
-    if (!movies) {
-      return res.status(500).json({ error: 'Could not find a Movies section in Plex.' });
-    }
-
-    // --- Pagination, type, and search support ---
-    const type = req.query.type; // 'movie' or 'show'
-    const offset = parseInt(req.query.offset) || 0;
-    const limit = parseInt(req.query.limit) || 50;
-    const search = (req.query.search || '').toLowerCase();
-    const startsWith = (req.query.startsWith || '').toLowerCase();
-
-    // If startsWith is provided, fetch all items without pagination
-    const shouldPaginate = !startsWith;
-    const effectiveLimit = shouldPaginate ? limit : 999999;
-    const effectiveOffset = shouldPaginate ? offset : 0;
-
-    // Use Plex's built-in pagination for fast loading
-    const [tvRes, movieRes] = await Promise.all([
-      axios.get(`${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}&X-Plex-Container-Start=${effectiveOffset}&X-Plex-Container-Size=${effectiveLimit}`,
-        { headers: { Accept: 'application/xml' } }),
-      axios.get(`${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}&X-Plex-Container-Start=${effectiveOffset}&X-Plex-Container-Size=${effectiveLimit}`,
-        { headers: { Accept: 'application/xml' } }),
-    ]);
-
-    // Make a separate request for the total count (no items, just the count)
-    let total = 0;
-    if (type === 'movie') {
-      const totalRes = await axios.get(
-        `${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}&X-Plex-Container-Start=0&X-Plex-Container-Size=0`,
-        { headers: { Accept: 'application/xml' } }
-      );
-      const totalParsed = await xml2js.parseStringPromise(totalRes.data);
-      console.log('[PlexLibrary] Movie total response:', totalParsed.MediaContainer);
-      total = parseInt(
-        (totalParsed.MediaContainer.$ && (totalParsed.MediaContainer.$.totalSize || totalParsed.MediaContainer.$.size)) ||
-        totalParsed.MediaContainer.totalSize ||
-        totalParsed.MediaContainer.size ||
-        0
-      );
-    } else if (type === 'show') {
-      const totalRes = await axios.get(
-        `${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}&X-Plex-Container-Start=0&X-Plex-Container-Size=0`,
-        { headers: { Accept: 'application/xml' } }
-      );
-      const totalParsed = await xml2js.parseStringPromise(totalRes.data);
-      console.log('[PlexLibrary] TV total response:', totalParsed.MediaContainer);
-      total = parseInt(
-        (totalParsed.MediaContainer.$ && (totalParsed.MediaContainer.$.totalSize || totalParsed.MediaContainer.$.size)) ||
-        totalParsed.MediaContainer.totalSize ||
-        totalParsed.MediaContainer.size ||
-        0
-      );
-    } else {
-      // Both
-      const [tvTotalRes, movieTotalRes] = await Promise.all([
-        axios.get(`${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}&X-Plex-Container-Start=0&X-Plex-Container-Size=0`,
-          { headers: { Accept: 'application/xml' } }),
-        axios.get(`${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}&X-Plex-Container-Start=0&X-Plex-Container-Size=0`,
-          { headers: { Accept: 'application/xml' } })
-      ]);
-      const tvTotalParsed = await xml2js.parseStringPromise(tvTotalRes.data);
-      const movieTotalParsed = await xml2js.parseStringPromise(movieTotalRes.data);
-      console.log('[PlexLibrary] TV total response:', tvTotalParsed.MediaContainer);
-      console.log('[PlexLibrary] Movie total response:', movieTotalParsed.MediaContainer);
-      const tvTotal = parseInt(
-        (tvTotalParsed.MediaContainer.$ && (tvTotalParsed.MediaContainer.$.totalSize || tvTotalParsed.MediaContainer.$.size)) ||
-        tvTotalParsed.MediaContainer.totalSize ||
-        tvTotalParsed.MediaContainer.size ||
-        0
-      );
-      const movieTotal = parseInt(
-        (movieTotalParsed.MediaContainer.$ && (movieTotalParsed.MediaContainer.$.totalSize || movieTotalParsed.MediaContainer.$.size)) ||
-        movieTotalParsed.MediaContainer.totalSize ||
-        movieTotalParsed.MediaContainer.size ||
-        0
-      );
-      total = tvTotal + movieTotal;
-    }
-
-    const tvParsed = await xml2js.parseStringPromise(tvRes.data);
-    const movieParsed = await xml2js.parseStringPromise(movieRes.data);
-
-    let tvShows = [];
-    if (tvParsed.MediaContainer.Directory) {
-      tvShows = tvParsed.MediaContainer.Directory.map(show => ({
-        title: show.$.title,
-        key: show.$.key,
-        thumb: show.$.thumb ? `${baseUrl}${show.$.thumb}?X-Plex-Token=${token}` : '',
-        type: 'show'
-      }));
-    } else if (tvParsed.MediaContainer.Video) {
-      tvShows = tvParsed.MediaContainer.Video.map(show => ({
-        title: show.$.title,
-        key: show.$.key,
-        thumb: show.$.thumb ? `${baseUrl}${show.$.thumb}?X-Plex-Token=${token}` : '',
-        type: 'show'
-      }));
-    }
-
-    let moviesList = movieParsed.MediaContainer.Video?.map(movie => ({
-      title: movie.$.title,
-      key: movie.$.key,
-      thumb: movie.$.thumb ? `${baseUrl}${movie.$.thumb}?X-Plex-Token=${token}` : '',
-      type: 'movie'
-    })) || [];
-
-    let items = [];
-    if (type === 'movie') items = moviesList;
-    else if (type === 'show') items = tvShows;
-    else items = [...tvShows, ...moviesList];
-
-    // Filter by search if needed
-    if (search) {
-      items = items.filter(item => item.title && item.title.toLowerCase().includes(search));
-    }
-    // Filter by first letter if startsWith is set
-    if (startsWith) {
-      if (startsWith === '#') {
-        // Show items that start with a number
-        items = items.filter(item => item.title && /^[0-9]/.test(item.title));
-      } else {
-        items = items.filter(item => item.title && item.title[0].toLowerCase() === startsWith);
-      }
-    }
-    // No in-memory slice needed, Plex already paginates
-    const paged = items;
-
-    // Fallback if total is 0, NaN, or missing (must be after items is defined)
-    if (!total || isNaN(total)) {
-      total = items.length;
-      console.log('[PlexLibrary] Fallback to items.length for total:', total);
-    }
-
-    res.json({
-      results: paged,
-      total,
-      tvSourcePath: sectionCache.tvPath,
-      moviesSourcePath: sectionCache.moviesPath
-    });
-  } catch (err) {
-    // Log the error details
-    console.error('[PlexLibrary] Failed to fetch library:', err.response?.data || err.message || err);
-    res.status(500).json({ error: 'Failed to fetch library from Plex' });
-  }
 });
 
 module.exports = router;

@@ -29,6 +29,17 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Drivearr backend running at http://localhost:${port}`);
-});
+// --- Initialization order: database -> syncService -> server ---
+const databaseService = require('./services/databaseService');
+const syncService = require('./services/syncService');
+
+databaseService.initialize()
+  .then(() => syncService.initialize())
+  .then(() => {
+    app.listen(port, () => {
+      console.log(`Drivearr backend running at http://localhost:${port}`);
+    });
+  })
+  .catch(err => {
+    console.error('Failed to initialize services:', err);
+  });
