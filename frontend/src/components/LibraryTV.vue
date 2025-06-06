@@ -5,6 +5,7 @@
     <div class="media-grid">
       <MediaCard v-for="show in tvShows" :key="show.key" :media="show" />
     </div>
+    <div v-if="!loading && tvShows.length === 0">No TV shows found.</div>
     <div class="pagination">
       <button @click="prevPage" :disabled="offset === 0">Previous</button>
       <span>Page {{ page }} of {{ totalPages }}</span>
@@ -39,6 +40,7 @@ async function fetchTVShows() {
     }
   })
   tvShows.value = res.data.results || []
+  console.log('Fetched TV Shows:', tvShows.value)
   total.value = res.data.total || 0
   loading.value = false
 }

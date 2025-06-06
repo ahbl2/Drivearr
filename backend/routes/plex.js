@@ -21,9 +21,24 @@ async function getPlexSections(config) {
   const parsed = await xml2js.parseStringPromise(res.data);
   const dirs = parsed.MediaContainer.Directory;
 
-  // Always select the section with title 'Movies' and 'TV Shows'
-  const tvSection = dirs.find(d => d.$.type === 'show' && d.$.title === 'TV Shows');
-  const movieSection = dirs.find(d => d.$.type === 'movie' && d.$.title === 'Movies');
+  // Log all available Plex library sections (title and type) with clear markers
+  console.log('[PlexLibrary] === Available Plex Library Sections ===');
+  dirs.forEach(d => {
+    console.log(`[PlexLibrary] Section: Title="${d.$.title}", Type="${d.$.type}"`);
+  });
+  console.log('[PlexLibrary] === End of Section List ===');
+
+  // More robust: find TV and Movie sections by type, prefer title match but fallback to first of type
+  const tvSection =
+    dirs.find(d => d.$.type === 'show' && d.$.title.toLowerCase() === 'tv shows') ||
+    dirs.find(d => d.$.type === 'show');
+  const movieSection =
+    dirs.find(d => d.$.type === 'movie' && d.$.title.toLowerCase() === 'movies') ||
+    dirs.find(d => d.$.type === 'movie');
+
+  // Log detected section keys and titles
+  console.log('[PlexLibrary] Detected TV section:', tvSection?.$.key, tvSection?.$.title);
+  console.log('[PlexLibrary] Detected Movie section:', movieSection?.$.key, movieSection?.$.title);
 
   return {
     tv: tvSection?.$.key,
@@ -56,20 +71,45 @@ router.get('/library', async (req, res) => {
     }
     const { baseUrl, token, tv, movies } = sectionCache;
     console.log('[PlexLibrary] baseUrl:', baseUrl, 'tv:', tv, 'movies:', movies);
+
+    // Error handling for missing section keys
+    if (!tv) {
+      return res.status(500).json({ error: 'Could not find a TV Shows section in Plex.' });
+    }
+    if (!movies) {
+      return res.status(500).json({ error: 'Could not find a Movies section in Plex.' });
+    }
+
     const [tvRes, movieRes] = await Promise.all([
       axios.get(`${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}`, { headers: { Accept: 'application/xml' } }),
       axios.get(`${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}`, { headers: { Accept: 'application/xml' } }),
     ]);
 
+    // Log the raw XML response for the TV section
+    // console.log('[PlexLibrary] Raw TV XML:', tvRes.data);
+
     const tvParsed = await xml2js.parseStringPromise(tvRes.data);
     const movieParsed = await xml2js.parseStringPromise(movieRes.data);
 
-    let tvShows = tvParsed.MediaContainer.Video?.map(show => ({
-      title: show.$.title,
-      key: show.$.key,
-      thumb: `${baseUrl}${show.$.thumb}?X-Plex-Token=${token}`,
-      type: 'show'
-    })) || [];
+    // Log the parsed TV show data before mapping
+    // console.log('[PlexLibrary] Parsed TV MediaContainer:', JSON.stringify(tvParsed.MediaContainer, null, 2));
+
+    let tvShows = [];
+    if (tvParsed.MediaContainer.Directory) {
+      tvShows = tvParsed.MediaContainer.Directory.map(show => ({
+        title: show.$.title,
+        key: show.$.key,
+        thumb: show.$.thumb ? `${baseUrl}${show.$.thumb}?X-Plex-Token=${token}` : '',
+        type: 'show'
+      }));
+    } else if (tvParsed.MediaContainer.Video) {
+      tvShows = tvParsed.MediaContainer.Video.map(show => ({
+        title: show.$.title,
+        key: show.$.key,
+        thumb: show.$.thumb ? `${baseUrl}${show.$.thumb}?X-Plex-Token=${token}` : '',
+        type: 'show'
+      }));
+    }
 
     let moviesList = movieParsed.MediaContainer.Video?.map(movie => ({
       title: movie.$.title,
