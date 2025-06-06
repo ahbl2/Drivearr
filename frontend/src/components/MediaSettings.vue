@@ -1,58 +1,36 @@
 <template>
-  <div class="settings-card">
-    <h2 class="settings-title">Media Paths</h2>
-    <div class="note">Media source paths are fetched from Plex automatically. Export folders (TV Shows, Movies) will be created on your USB drive if needed.</div>
-    <form @submit.prevent="save" class="settings-form">
-      <label>USB Mount Path:</label>
-      <input v-model="form.USB_MOUNT_ROOT" required placeholder="/mnt/usb or D:/Drivearr" />
-      <button class="save-btn" type="submit">Save USB Path</button>
-    </form>
-  </div>
+  <form @submit.prevent="save" class="settings-form">
+    <label>Media Path:</label>
+    <input v-model="form.MEDIA_PATH" required />
+    <button class="save-btn" type="submit">Save Media Settings</button>
+  </form>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
 
-const form = ref({
-  USB_MOUNT_ROOT: ''
-})
-
-const emit = defineEmits(['setupComplete'])
-const props = defineProps({
-  notify: Function
-})
+const form = ref({ MEDIA_PATH: '' })
 
 const save = async () => {
   try {
     await axios.post('/api/config', form.value)
-    emit('setupComplete')
+    // Optionally emit setupComplete or notify
   } catch (err) {
-    if (props.notify) props.notify('Failed to save config: ' + (err.response?.data?.error || err.message), 'error')
-    else alert('Failed to save config')
-    console.error(err)
+    alert('Failed to save media settings')
   }
 }
 </script>
 
 <style scoped>
-.settings-card {
+.settings-form {
   background: #23293a;
-  border-radius: 0 12px 12px 0;
+  border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.12);
   min-width: 340px;
   padding: 2.5rem 2rem 2rem 2rem;
   color: #fff;
-  margin-left: -1px;
-}
-.settings-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #bfc7d5;
-  margin-bottom: 1.2rem;
-  letter-spacing: 1px;
-}
-.settings-form {
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
@@ -98,13 +76,5 @@ input:focus {
 }
 .save-btn:hover {
   background: #2563eb;
-}
-.note {
-  color: #f9a825;
-  font-size: 0.95rem;
-  margin-bottom: 0.7rem;
-  margin-top: -0.7rem;
-  text-align: left;
-  width: 100%;
 }
 </style> 

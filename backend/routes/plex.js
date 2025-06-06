@@ -64,23 +64,40 @@ router.get('/library', async (req, res) => {
     const tvParsed = await xml2js.parseStringPromise(tvRes.data);
     const movieParsed = await xml2js.parseStringPromise(movieRes.data);
 
-    const tvShows = tvParsed.MediaContainer.Video?.map(show => ({
+    let tvShows = tvParsed.MediaContainer.Video?.map(show => ({
       title: show.$.title,
       key: show.$.key,
       thumb: `${baseUrl}${show.$.thumb}?X-Plex-Token=${token}`,
       type: 'show'
     })) || [];
 
-    const moviesList = movieParsed.MediaContainer.Video?.map(movie => ({
+    let moviesList = movieParsed.MediaContainer.Video?.map(movie => ({
       title: movie.$.title,
       key: movie.$.key,
       thumb: `${baseUrl}${movie.$.thumb}?X-Plex-Token=${token}`,
       type: 'movie'
     })) || [];
 
+    // --- Pagination, type, and search support ---
+    const type = req.query.type; // 'movie' or 'show'
+    const offset = parseInt(req.query.offset) || 0;
+    const limit = parseInt(req.query.limit) || 50;
+    const search = (req.query.search || '').toLowerCase();
+
+    let items = [];
+    if (type === 'movie') items = moviesList;
+    else if (type === 'show') items = tvShows;
+    else items = [...tvShows, ...moviesList];
+
+    if (search) {
+      items = items.filter(item => item.title.toLowerCase().includes(search));
+    }
+    const total = items.length;
+    const paged = items.slice(offset, offset + limit);
+
     res.json({
-      tvShows,
-      movies: moviesList,
+      results: paged,
+      total,
       tvSourcePath: sectionCache.tvPath,
       moviesSourcePath: sectionCache.moviesPath
     });

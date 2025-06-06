@@ -1,35 +1,32 @@
 <template>
-  <div class="settings-card">
-    <h2 class="settings-title">Plex Settings</h2>
-    <form @submit.prevent="save" class="settings-form">
-      <button type="button" class="plex-auth-btn" @click="authenticateWithPlex" :disabled="authenticating || !!form.PLEX_TOKEN">
-        <i class="fa fa-key"></i>
-        {{ authenticating ? 'Waiting for Plex...' : (form.PLEX_TOKEN ? 'Authenticated with Plex.tv' : 'Authenticate with Plex.tv') }}
-      </button>
-      <div v-if="authenticating" class="plex-auth-status">Waiting for authentication in Plex.tv...</div>
-      <div v-if="!form.PLEX_TOKEN && !authenticating">
-        <label>Plex Token (manual):</label>
-        <input v-model="form.PLEX_TOKEN" placeholder="Paste token if not using OAuth" />
-      </div>
+  <form @submit.prevent="save" class="settings-form">
+    <button type="button" class="plex-auth-btn" @click="authenticateWithPlex" :disabled="authenticating || !!form.PLEX_TOKEN">
+      <i class="fa fa-key"></i>
+      {{ authenticating ? 'Waiting for Plex...' : (form.PLEX_TOKEN ? 'Authenticated with Plex.tv' : 'Authenticate with Plex.tv') }}
+    </button>
+    <div v-if="authenticating" class="plex-auth-status">Waiting for authentication in Plex.tv...</div>
+    <div v-if="!form.PLEX_TOKEN && !authenticating">
+      <label>Plex Token (manual):</label>
+      <input v-model="form.PLEX_TOKEN" placeholder="Paste token if not using OAuth" />
+    </div>
 
-      <label v-if="servers.length">Server:</label>
-      <select v-if="servers.length" v-model="selectedServer" @change="onServerChange">
-        <option v-for="server in servers" :key="server.clientIdentifier" :value="server">{{ server.name }}</option>
-      </select>
+    <label v-if="servers.length">Server:</label>
+    <select v-if="servers.length" v-model="selectedServer" @change="onServerChange">
+      <option v-for="server in servers" :key="server.clientIdentifier" :value="server">{{ server.name }}</option>
+    </select>
 
-      <label>Host:</label>
-      <input v-model="form.PLEX_HOST" required />
+    <label>Host:</label>
+    <input v-model="form.PLEX_HOST" required />
 
-      <label>Port:</label>
-      <input v-model="form.PLEX_PORT" required type="number" min="1" max="65535" />
+    <label>Port:</label>
+    <input v-model="form.PLEX_PORT" required type="number" min="1" max="65535" />
 
-      <label><input type="checkbox" v-model="form.PLEX_SSL" /> Use SSL (HTTPS)</label>
+    <label><input type="checkbox" v-model="form.PLEX_SSL" /> Use SSL (HTTPS)</label>
 
-      <div class="note">Media source paths are fetched from Plex automatically.</div>
+    <div class="note">Media source paths are fetched from Plex automatically.</div>
 
-      <button class="save-btn" type="submit">Save Plex Settings</button>
-    </form>
-  </div>
+    <button class="save-btn" type="submit">Save Plex Settings</button>
+  </form>
 </template>
 
 <script setup>
@@ -177,23 +174,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.settings-card {
+.settings-form {
   background: #23293a;
-  border-radius: 0 12px 12px 0;
+  border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.12);
   min-width: 340px;
   padding: 2.5rem 2rem 2rem 2rem;
   color: #fff;
-  margin-left: -1px;
-}
-.settings-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #bfc7d5;
-  margin-bottom: 1.2rem;
-  letter-spacing: 1px;
-}
-.settings-form {
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 1.2rem;

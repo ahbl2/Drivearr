@@ -1,12 +1,10 @@
 <template>
   <div class="sync-queue">
     <h3 class="queue-title">Sync Queue</h3>
-    <div v-if="queue.length === 0" class="empty-msg">No items in the sync queue.</div>
-    <div v-if="overallProgress > 0 && syncing" class="overall-progress-bar">
-      <div class="progress-bar-inner" :style="{ width: overallProgress + '%' }"></div>
-      <span class="progress-label">{{ overallProgress }}%</span>
-    </div>
-    <div class="queue-list">
+    <div v-if="loading" class="empty-msg">Loading sync queue...</div>
+    <div v-else-if="error" class="empty-msg">{{ error }}</div>
+    <div v-else-if="queue && queue.length === 0" class="empty-msg">No items in the sync queue.</div>
+    <div v-else class="queue-list">
       <div
         v-for="item in queue"
         :key="item.key || item.path"
@@ -43,14 +41,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 
-const props = defineProps({
-  queue: Array,
-  onRemove: Function,
-  notify: Function
-})
+const queue = ref([])
+const loading = ref(true)
+const error = ref(null)
 
 const syncing = ref(false)
 const syncResult = ref(null)
@@ -77,8 +73,15 @@ function statusText(status) {
   }
 }
 
-const remove = (item) => {
-  props.onRemove(item)
+const remove = async (item) => {
+  // Optionally call API to remove from queue
+  try {
+    await axios.post('/api/sync/remove', { item })
+    queue.value = queue.value.filter(q => (q.key || q.path) !== (item.key || item.path))
+  } catch (err) {
+    // Optionally show notification
+    alert('Failed to remove item from queue')
+  }
 }
 
 function itemStatus(item) {
@@ -107,16 +110,15 @@ const pollSyncStatus = async () => {
 const startSync = async () => {
   syncing.value = true
   syncResult.value = null
-  syncStatus.value = { active: true, total: props.queue.length, completed: 0, items: [] }
+  syncStatus.value = { active: true, total: queue.value.length, completed: 0, items: [] }
   pollInterval = setInterval(pollSyncStatus, 1000)
 
   try {
-    const res = await axios.post('/api/sync/start', { queue: props.queue })
+    const res = await axios.post('/api/sync/start', { queue: queue.value })
     syncResult.value = res.data
     await pollSyncStatus()
   } catch (err) {
-    if (props.notify) props.notify('Sync failed: ' + (err.response?.data?.error || err.message), 'error')
-    else alert('Sync failed')
+    alert('Sync failed: ' + (err.response?.data?.error || err.message))
     console.error(err)
   } finally {
     syncing.value = false
@@ -124,6 +126,20 @@ const startSync = async () => {
     pollInterval = null
   }
 }
+
+onMounted(async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const res = await axios.get('/api/sync/queue')
+    queue.value = res.data
+  } catch (err) {
+    error.value = 'Failed to load sync queue.'
+    queue.value = []
+  } finally {
+    loading.value = false
+  }
+})
 
 onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval)

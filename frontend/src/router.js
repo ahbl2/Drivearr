@@ -1,13 +1,17 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import PlexSettings from './components/PlexSettings.vue'
-import MediaSettings from './components/MediaSettings.vue'
+import LibraryDashboard from './components/LibraryDashboard.vue'
+import LibraryTV from './components/LibraryTV.vue'
+import LibraryMovies from './components/LibraryMovies.vue'
+import SyncQueue from './components/SyncQueue.vue'
+import Settings from './components/Settings.vue'
 
 const routes = [
-  { path: '/', redirect: '/settings' },
-  { path: '/settings', redirect: '/settings/plex' },
-  { path: '/settings/plex', component: PlexSettings },
-  { path: '/settings/media', component: MediaSettings },
-  // Add other routes as needed
+  { path: '/', redirect: '/library' },
+  { path: '/library', component: LibraryDashboard },
+  { path: '/library/tv', component: LibraryTV },
+  { path: '/library/movies', component: LibraryMovies },
+  { path: '/sync-queue', component: SyncQueue },
+  { path: '/settings/:tab?', component: Settings }
 ]
 
 const router = createRouter({

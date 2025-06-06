@@ -16,13 +16,13 @@
 <style scoped>
 .settings-sidebar {
   width: 160px;
-  background: #23293a;
-  border-radius: 12px 0 0 12px;
+  background: transparent;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
   padding: 2rem 0.5rem;
   gap: 1rem;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  box-shadow: none;
 }
 .nav-link {
   background: none;
