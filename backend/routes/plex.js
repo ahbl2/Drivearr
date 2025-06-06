@@ -85,12 +85,18 @@ router.get('/library', async (req, res) => {
     const offset = parseInt(req.query.offset) || 0;
     const limit = parseInt(req.query.limit) || 50;
     const search = (req.query.search || '').toLowerCase();
+    const startsWith = (req.query.startsWith || '').toLowerCase();
+
+    // If startsWith is provided, fetch all items without pagination
+    const shouldPaginate = !startsWith;
+    const effectiveLimit = shouldPaginate ? limit : 999999;
+    const effectiveOffset = shouldPaginate ? offset : 0;
 
     // Use Plex's built-in pagination for fast loading
     const [tvRes, movieRes] = await Promise.all([
-      axios.get(`${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}&X-Plex-Container-Start=${offset}&X-Plex-Container-Size=${limit}`,
+      axios.get(`${baseUrl}/library/sections/${tv}/all?X-Plex-Token=${token}&X-Plex-Container-Start=${effectiveOffset}&X-Plex-Container-Size=${effectiveLimit}`,
         { headers: { Accept: 'application/xml' } }),
-      axios.get(`${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}&X-Plex-Container-Start=${offset}&X-Plex-Container-Size=${limit}`,
+      axios.get(`${baseUrl}/library/sections/${movies}/all?X-Plex-Token=${token}&X-Plex-Container-Start=${effectiveOffset}&X-Plex-Container-Size=${effectiveLimit}`,
         { headers: { Accept: 'application/xml' } }),
     ]);
 
@@ -183,7 +189,16 @@ router.get('/library', async (req, res) => {
 
     // Filter by search if needed
     if (search) {
-      items = items.filter(item => item.title.toLowerCase().includes(search));
+      items = items.filter(item => item.title && item.title.toLowerCase().includes(search));
+    }
+    // Filter by first letter if startsWith is set
+    if (startsWith) {
+      if (startsWith === '#') {
+        // Show items that start with a number
+        items = items.filter(item => item.title && /^[0-9]/.test(item.title));
+      } else {
+        items = items.filter(item => item.title && item.title[0].toLowerCase() === startsWith);
+      }
     }
     // No in-memory slice needed, Plex already paginates
     const paged = items;

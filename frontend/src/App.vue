@@ -7,7 +7,16 @@
       </div>
       <div class="header-right">
         <div class="search-bar-wrapper">
-          <input class="search-bar" type="text" placeholder="Search..." disabled />
+          <input 
+            v-model="globalSearch" 
+            @input="onGlobalSearch" 
+            class="search-bar" 
+            type="text" 
+            placeholder="Search all media..." 
+          />
+          <button v-if="globalSearch" @click="clearGlobalSearch" class="clear-search">
+            <i class="fa fa-times"></i>
+          </button>
         </div>
         <i class="fa fa-bell header-icon"></i>
         <div class="user-menu-wrapper">
@@ -20,15 +29,26 @@
     </aside>
     <div class="main-content">
       <main class="content-area">
-        <router-view />
+        <router-view :global-search="globalSearch" />
       </main>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 // No custom navigation logic needed, Vue Router handles all routing now
+
+const globalSearch = ref('')
+
+function onGlobalSearch() {
+  // The search will be handled by the router-view components
+}
+
+function clearGlobalSearch() {
+  globalSearch.value = ''
+}
 </script>
 
 <style>

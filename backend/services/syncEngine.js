@@ -134,7 +134,7 @@ async function syncQueueToDrive(queue, scannedDrive, options) {
         }
       }
       if (copied) {
-        results.copied.push({ ...item, destPath });
+      results.copied.push({ ...item, destPath });
         await markCompleted(options.usbRoot, item);
         updateSyncStatusItem(itemKey, { status: 'done', progress: 100 });
       } else {
