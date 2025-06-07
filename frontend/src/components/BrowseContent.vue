@@ -1,5 +1,6 @@
 <template>
-  <div class="browse-content">
+
+<div class="browse-content">
     <div v-if="!sectionSelected" class="no-section-msg">
       <p>Please select a {{ type === 'movie' ? 'Movies' : 'TV Shows' }} section in Plex Settings first.</p>
     </div>
@@ -34,9 +35,11 @@
             <button 
               class="add-btn" 
               @click="addToQueue(item)"
-              :disabled="isInQueue(item.key)"
+              :disabled="isInQueue(item.key) || isOnDrive(item)"
             >
-              {{ isInQueue(item.key) ? '✓' : '+' }}
+              <span v-if="isOnDrive(item)">On Drive</span>
+              <span v-else-if="isInQueue(item.key)">✓</span>
+              <span v-else>+</span>
             </button>
           </div>
           <div class="media-info">
@@ -76,6 +79,7 @@ const loading = ref(false)
 const queue = ref(new Set())
 const sectionKey = ref('')
 const sectionSelected = ref(true)
+const scanned = ref([])
 
 const alphaLetters = [
   '#', ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)), '*'
@@ -112,6 +116,15 @@ function onSearch() {
   }, 300)
 }
 
+async function fetchScanned() {
+  try {
+    const res = await axios.get('/api/usb/scanned')
+    scanned.value = res.data
+  } catch (err) {
+    scanned.value = []
+  }
+}
+
 async function fetchItems() {
   loading.value = true
   try {
@@ -138,8 +151,22 @@ function isInQueue(key) {
   return queue.value.has(key)
 }
 
+function isOnDrive(item) {
+  if (props.type === 'movie') {
+    return scanned.value.some(s => s.type === 'movie' && s.title.toLowerCase() === item.title.toLowerCase())
+  } else if (props.type === 'show') {
+    // If this is a show, check if all episodes for this show/season exist
+    // For now, just check if any episode for this show exists
+    return scanned.value.some(s => s.type === 'episode' && s.title.toLowerCase() === item.title.toLowerCase())
+  }
+  return false
+}
+
 async function addToQueue(item) {
-  if (isInQueue(item.key)) return
+  if (isInQueue(item.key) || isOnDrive(item)) {
+    toast.info('Already exists on drive')
+    return
+  }
 
   try {
     await axios.post('/api/sync/queue', {
@@ -160,11 +187,13 @@ watch(() => props.type, async () => {
   search.value = ''
   await checkSectionSelected()
   if (sectionSelected.value) fetchItems()
+  await fetchScanned()
 })
 
 onMounted(async () => {
   await checkSectionSelected()
   if (sectionSelected.value) fetchItems()
+  await fetchScanned()
 })
 </script>
 

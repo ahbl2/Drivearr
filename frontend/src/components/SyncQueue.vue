@@ -28,14 +28,26 @@
         </button>
       </div>
     </div>
-    <button class="sync-btn" @click="startSync" :disabled="queue.length === 0 || syncing">
-      <i class="fa fa-play"></i> Start Sync
-    </button>
-
+    <div class="queue-controls">
+      <button class="sync-btn" @click="startSync" :disabled="queue.length === 0 || syncing">
+        <i class="fa fa-play"></i> Start Sync
+      </button>
+      <button class="pause-btn" @click="togglePause" :disabled="!syncing">
+        <i :class="paused ? 'fa fa-play' : 'fa fa-pause'"></i> {{ paused ? 'Resume' : 'Pause' }}
+      </button>
+      <button class="clear-completed-btn" @click="clearCompleted" :disabled="!hasCompletedItems">
+        <i class="fa fa-trash"></i> Clear Completed
+      </button>
+    </div>
     <div v-if="syncResult" class="sync-result">
       <p>✅ Copied: {{ syncResult.copied.length }}</p>
       <p>⏩ Skipped: {{ syncResult.skipped.length }}</p>
       <p>❌ Errors: {{ syncResult.errors.length }}</p>
+    </div>
+    <div class="pagination">
+      <button @click="prevPage" :disabled="currentPage === 1">Previous</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <button @click="nextPage" :disabled="currentPage === totalPages">Next</button>
     </div>
   </div>
 </template>
@@ -47,11 +59,20 @@ import axios from 'axios'
 const queue = ref([])
 const loading = ref(true)
 const error = ref(null)
-
 const syncing = ref(false)
 const syncResult = ref(null)
 const syncStatus = ref({ active: false, total: 0, completed: 0, items: [] })
 let pollInterval = null
+const paused = ref(false)
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalItems = ref(0)
+
+const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value))
+
+const hasCompletedItems = computed(() => {
+  return queue.value.some(item => itemStatus(item).status === 'done' || itemStatus(item).status === 'skipped')
+})
 
 const statusMap = {
   ready: 'ready',
@@ -68,18 +89,16 @@ function statusText(status) {
     case 'syncing': return 'Syncing'
     case 'done': return 'Done'
     case 'error': return 'Error'
-    case 'skipped': return 'Skipped'
+    case 'skipped': return 'Already exists'
     default: return 'Pending'
   }
 }
 
 const remove = async (item) => {
-  // Optionally call API to remove from queue
   try {
     await axios.post('/api/sync/remove', { item })
-    queue.value = queue.value.filter(q => (q.key || q.path) !== (item.key || item.path))
+    await fetchQueue()
   } catch (err) {
-    // Optionally show notification
     alert('Failed to remove item from queue')
   }
 }
@@ -127,18 +146,56 @@ const startSync = async () => {
   }
 }
 
-onMounted(async () => {
+const togglePause = async () => {
+  try {
+    const res = await axios.post('/api/sync/pause', { paused: !paused.value })
+    paused.value = res.data.paused
+  } catch (err) {
+    alert('Failed to toggle pause state')
+  }
+}
+
+const clearCompleted = async () => {
+  try {
+    await axios.post('/api/sync/clear-completed')
+    await fetchQueue()
+  } catch (err) {
+    alert('Failed to clear completed items')
+  }
+}
+
+const fetchQueue = async () => {
   loading.value = true
   error.value = null
   try {
-    const res = await axios.get('/api/sync/queue')
-    queue.value = res.data
+    const safePage = Math.max(1, currentPage.value)
+    const res = await axios.get('/api/sync/queue', { params: { page: safePage, pageSize: pageSize.value } })
+    queue.value = res.data.items
+    totalItems.value = res.data.total
   } catch (err) {
     error.value = 'Failed to load sync queue.'
     queue.value = []
   } finally {
     loading.value = false
   }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    fetchQueue()
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    fetchQueue()
+  }
+}
+
+onMounted(async () => {
+  await fetchQueue()
 })
 
 onUnmounted(() => {
@@ -317,7 +374,12 @@ onUnmounted(() => {
 .remove-btn:hover {
   background: #dc2626;
 }
-.sync-btn {
+.queue-controls {
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.sync-btn, .pause-btn, .clear-completed-btn {
   background: #3b82f6;
   color: #fff;
   border: none;
@@ -325,22 +387,16 @@ onUnmounted(() => {
   padding: 0.8rem 2rem;
   font-size: 1.1rem;
   font-weight: 600;
-  margin: 1.5rem auto 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
   cursor: pointer;
   transition: background 0.2s;
-  width: 100%;
-  max-width: 340px;
 }
-.sync-btn:disabled {
+.sync-btn:disabled, .pause-btn:disabled, .clear-completed-btn:disabled {
   background: #334155;
   color: #bfc7d5;
   cursor: not-allowed;
 }
-.sync-btn:hover:not(:disabled) {
+.sync-btn:hover:not(:disabled), .pause-btn:hover:not(:disabled), .clear-completed-btn:hover:not(:disabled) {
   background: #2563eb;
 }
 .sync-result {
@@ -351,5 +407,29 @@ onUnmounted(() => {
   color: #fff;
   font-size: 1rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.pagination button {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.pagination button:disabled {
+  background: #334155;
+  color: #bfc7d5;
+  cursor: not-allowed;
+}
+.pagination button:hover:not(:disabled) {
+  background: #2563eb;
 }
 </style>

@@ -12,8 +12,10 @@
           <div class="poster-wrapper">
             <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.title" class="poster" />
             <div v-else class="no-poster">{{ item.title.charAt(0) }}</div>
-            <button class="add-btn" @click="addToQueue(item)" :disabled="isInQueue(item.key)">
-              {{ isInQueue(item.key) ? '✓' : '+' }}
+            <button class="add-btn" @click="addToQueue(item)" :disabled="isInQueue(item.key) || isOnDrive(item)">
+              <span v-if="isOnDrive(item)">On Drive</span>
+              <span v-else-if="isInQueue(item.key)">✓</span>
+              <span v-else>+</span>
             </button>
           </div>
           <div class="media-info">
@@ -33,8 +35,10 @@
           <div class="poster-wrapper">
             <img v-if="show.thumb_url" :src="show.thumb_url" :alt="show.title" class="poster" />
             <div v-else class="no-poster">{{ show.title.charAt(0) }}</div>
-            <button class="add-btn" @click="addToQueue(show)" :disabled="isInQueue(show.key)">
-              {{ isInQueue(show.key) ? '✓' : '+' }}
+            <button class="add-btn" @click="addToQueue(show)" :disabled="isInQueue(show.key) || isOnDrive(show)">
+              <span v-if="isOnDrive(show)">On Drive</span>
+              <span v-else-if="isInQueue(show.key)">✓</span>
+              <span v-else>+</span>
             </button>
           </div>
           <div class="media-info">
@@ -53,8 +57,10 @@
           <div class="poster-wrapper">
             <img v-if="movie.thumb_url" :src="movie.thumb_url" :alt="movie.title" class="poster" />
             <div v-else class="no-poster">{{ movie.title.charAt(0) }}</div>
-            <button class="add-btn" @click="addToQueue(movie)" :disabled="isInQueue(movie.key)">
-              {{ isInQueue(movie.key) ? '✓' : '+' }}
+            <button class="add-btn" @click="addToQueue(movie)" :disabled="isInQueue(movie.key) || isOnDrive(movie)">
+              <span v-if="isOnDrive(movie)">On Drive</span>
+              <span v-else-if="isInQueue(movie.key)">✓</span>
+              <span v-else>+</span>
             </button>
           </div>
           <div class="media-info">
@@ -82,19 +88,35 @@ const toast = useToast()
 const search = ref('')
 const searchResults = ref([])
 const loadingSearch = ref(false)
+const scanned = ref([])
 let searchTimeout
 
 function isInQueue(key) {
   return queue.value.has(key)
 }
 
+function isOnDrive(item) {
+  if (item.type === 'movie') {
+    return scanned.value.some(s => s.type === 'movie' && s.title.toLowerCase() === item.title.toLowerCase())
+  } else if (item.type === 'show') {
+    // For shows, check if any episode for this show exists
+    return scanned.value.some(s => s.type === 'episode' && s.title.toLowerCase() === item.title.toLowerCase())
+  }
+  return false
+}
+
 async function addToQueue(item) {
-  if (isInQueue(item.key)) return
+  if (isInQueue(item.key) || isOnDrive(item)) {
+    toast.info('Already exists on drive')
+    return
+  }
   try {
     await axios.post('/api/sync/queue', {
-      plexKey: item.key,
-      title: item.title,
-      type: item.type
+      items: [{
+        plexKey: item.key,
+        title: item.title,
+        type: item.type
+      }]
     })
     queue.value.add(item.key)
     toast.success(`Added ${item.title} to sync queue`)
@@ -128,9 +150,19 @@ function onSearch() {
   }, 300)
 }
 
+async function fetchScanned() {
+  try {
+    const res = await axios.get('/api/usb/scanned')
+    scanned.value = res.data
+  } catch (err) {
+    scanned.value = []
+  }
+}
+
 onMounted(async () => {
   loadingTV.value = true
   loadingMovies.value = true
+  await fetchScanned()
   try {
     const tvRes = await axios.get('/api/plex/browse', { params: { type: 'show', pageSize: 20, page: 1, recent: true } })
     newestTV.value = tvRes.data.results || []
