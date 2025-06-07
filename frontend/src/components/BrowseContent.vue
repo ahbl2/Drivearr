@@ -7,6 +7,18 @@
     <div v-else>
       <div class="browse-header">
         <h2>Browse {{ type === 'movie' ? 'Movies' : 'TV Shows' }}</h2>
+        <div class="view-toggle">
+          <button class="view-toggle-btn" @click="showDropdown = !showDropdown">
+            <i class="fa fa-th-large"></i>
+            <span>{{ viewOptions.find(opt => opt.value === viewMode).label }}</span>
+            <i class="fa fa-caret-down"></i>
+          </button>
+          <div v-if="showDropdown" class="view-dropdown">
+            <div v-for="opt in viewOptions" :key="opt.value" class="view-option" @click="setViewMode(opt.value); showDropdown = false">
+              <i :class="opt.icon"></i> {{ opt.label }}
+            </div>
+          </div>
+        </div>
         <div class="alpha-pagination">
           <button v-for="letter in alphaLetters" :key="letter" :class="['alpha-btn', { active: letter === activeLetter }]" @click="setAlpha(letter)">{{ letter }}</button>
         </div>
@@ -20,38 +32,28 @@
         </div>
       </div>
 
-      <div class="media-grid">
-        <div v-for="item in items" :key="item.key" class="media-card">
-          <div class="poster-wrapper">
-            <img 
-              v-if="item.thumb_url" 
-              :src="item.thumb_url" 
-              :alt="item.title" 
-              class="poster"
-            />
-            <div v-else class="no-poster">
-              {{ item.title.charAt(0) }}
-            </div>
-            <button 
-              class="add-btn" 
-              @click="addToQueue(item)"
-              :disabled="isInQueue(item.key) || isOnDrive(item)"
-            >
-              <span v-if="isOnDrive(item)">On Drive</span>
-              <span v-else-if="isInQueue(item.key)">✓</span>
-              <span v-else>+</span>
-            </button>
-          </div>
-          <div class="media-info">
-            <h3 class="title">{{ item.title }}</h3>
-            <p v-if="item.year" class="year">{{ item.year }}</p>
-          </div>
-        </div>
-      </div>
-
       <div v-if="loading" class="loading">Loading...</div>
       <div v-else-if="items.length === 0" class="no-results">
         No {{ type === 'movie' ? 'movies' : 'TV shows' }} found.
+      </div>
+      <div v-else>
+        <div v-if="viewMode.value === 'posters'" class="media-grid">
+          <component
+            :is="viewComponent"
+            :items="items"
+            :addToQueue="addToQueue"
+            :isInQueue="isInQueue"
+            :isOnDrive="isOnDrive"
+          />
+        </div>
+        <component
+          v-else
+          :is="viewComponent"
+          :items="items"
+          :addToQueue="addToQueue"
+          :isInQueue="isInQueue"
+          :isOnDrive="isOnDrive"
+        />
       </div>
     </div>
   </div>
@@ -61,6 +63,12 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
+import useViewMode from '../composables/useViewMode'
+import PosterGridView from './PosterGridView.vue'
+import OverviewListView from './OverviewListView.vue'
+import TVTableView from './TVTableView.vue'
+import MovieTableView from './MovieTableView.vue'
+import MixedTableView from './MixedTableView.vue'
 
 const props = defineProps({
   type: {
@@ -80,11 +88,35 @@ const queue = ref(new Set())
 const sectionKey = ref('')
 const sectionSelected = ref(true)
 const scanned = ref([])
+const showDropdown = ref(false)
+
+const { viewMode, setViewMode, viewOptions } = useViewMode(props.type + 'ViewMode', 'posters')
 
 const alphaLetters = [
   '#', ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)), '*'
 ]
 const activeLetter = ref('#')
+
+const componentMap = {
+  PosterGridView,
+  OverviewListView,
+  TVTableView,
+  MovieTableView,
+  MixedTableView
+}
+
+function getViewComponentKey(type) {
+  if (viewMode.value === 'posters') return 'PosterGridView'
+  if (viewMode.value === 'overview') return 'OverviewListView'
+  if (viewMode.value === 'table') {
+    if (type === 'show') return 'TVTableView'
+    if (type === 'movie') return 'MovieTableView'
+    return 'MixedTableView'
+  }
+  return 'PosterGridView'
+}
+
+const viewComponent = computed(() => componentMap[getViewComponentKey(props.type)])
 
 function setAlpha(letter) {
   activeLetter.value = letter
@@ -203,7 +235,62 @@ onMounted(async () => {
 }
 
 .browse-header {
-  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.view-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.view-toggle-btn {
+  background: #23293a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.view-toggle-btn:hover {
+  background: #3b82f6;
+}
+
+.view-dropdown {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background: #23293a;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  z-index: 1000;
+  min-width: 160px;
+  padding: 0.5rem 0;
+}
+
+.view-option {
+  padding: 0.6rem 1.2rem;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1rem;
+  transition: background 0.15s;
+}
+
+.view-option:hover {
+  background: #3b82f6;
 }
 
 .alpha-pagination {

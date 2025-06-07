@@ -1,75 +1,77 @@
 <template>
   <div class="dashboard">
-    <div class="search-bar-container">
-      <input v-model="search" @input="onSearch" placeholder="Search Movies & TV Shows..." class="search-bar" />
+    <div class="dashboard-header">
+      <div class="search-bar-container">
+        <input v-model="search" @input="onSearch" placeholder="Search Movies & TV Shows..." class="search-bar" />
+      </div>
     </div>
     <div v-if="search.trim()">
       <h2 class="section-title">Search Results <span class="plex-note">(Movies & TV Shows in Plex)</span></h2>
       <div v-if="loadingSearch" class="loading">Searching...</div>
       <div v-else-if="searchResults.length === 0" class="no-results">No results found.</div>
-      <div v-else class="media-grid">
-        <div v-for="item in searchResults" :key="item.key + item.type" class="media-card">
-          <div class="poster-wrapper">
-            <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.title" class="poster" />
-            <div v-else class="no-poster">{{ item.title.charAt(0) }}</div>
-            <button class="add-btn" @click="addToQueue(item)" :disabled="isInQueue(item.key) || isOnDrive(item)">
-              <span v-if="isOnDrive(item)">On Drive</span>
-              <span v-else-if="isInQueue(item.key)">✓</span>
-              <span v-else>+</span>
-            </button>
-          </div>
-          <div class="media-info">
-            <h3 class="title">{{ item.title }}</h3>
-            <p v-if="item.year" class="year">{{ item.year }}</p>
-            <span class="type-tag">{{ item.type === 'movie' ? 'Movie' : 'TV Show' }}</span>
-          </div>
-        </div>
+      <div v-else>
+        <component :is="getViewComponent('mixed')" :items="searchResults" />
       </div>
     </div>
     <div v-else>
-      <h2 class="section-title">Newest TV Shows <span class="plex-note">(Newest in Plex)</span></h2>
-      <div v-if="loadingTV" class="loading">Loading TV shows...</div>
-      <div v-else-if="newestTV.length === 0" class="no-results">No TV shows found in Plex.</div>
-      <div v-else class="media-grid">
-        <div v-for="show in newestTV" :key="show.key" class="media-card">
-          <div class="poster-wrapper">
-            <img v-if="show.thumb_url" :src="show.thumb_url" :alt="show.title" class="poster" />
-            <div v-else class="no-poster">{{ show.title.charAt(0) }}</div>
-            <button class="add-btn" @click="addToQueue(show)" :disabled="isInQueue(show.key) || isOnDrive(show)">
-              <span v-if="isOnDrive(show)">On Drive</span>
-              <span v-else-if="isInQueue(show.key)">✓</span>
-              <span v-else>+</span>
-            </button>
-          </div>
-          <div class="media-info">
-            <h3 class="title">{{ show.title }}</h3>
-            <p v-if="show.year" class="year">{{ show.year }}</p>
-          </div>
-        </div>
-      </div>
-      <router-link to="/library/tv" class="see-all">See all TV Shows</router-link>
-
-      <h2 class="section-title">Newest Movies <span class="plex-note">(Newest in Plex)</span></h2>
-      <div v-if="loadingMovies" class="loading">Loading movies...</div>
-      <div v-else-if="newestMovies.length === 0" class="no-results">No movies found in Plex.</div>
-      <div v-else class="media-grid">
-        <div v-for="movie in newestMovies" :key="movie.key" class="media-card">
-          <div class="poster-wrapper">
-            <img v-if="movie.thumb_url" :src="movie.thumb_url" :alt="movie.title" class="poster" />
-            <div v-else class="no-poster">{{ movie.title.charAt(0) }}</div>
-            <button class="add-btn" @click="addToQueue(movie)" :disabled="isInQueue(movie.key) || isOnDrive(movie)">
-              <span v-if="isOnDrive(movie)">On Drive</span>
-              <span v-else-if="isInQueue(movie.key)">✓</span>
-              <span v-else>+</span>
-            </button>
-          </div>
-          <div class="media-info">
-            <h3 class="title">{{ movie.title }}</h3>
-            <p v-if="movie.year" class="year">{{ movie.year }}</p>
+      <div class="dashboard-section">
+        <h2 class="section-title">Newest TV Shows <span class="plex-note">(Newest in Plex)</span></h2>
+        <div v-if="loadingTV" class="loading">Loading TV shows...</div>
+        <div v-else-if="newestTV.length === 0" class="no-results">No TV shows found in Plex.</div>
+        <div v-else>
+          <div class="media-grid">
+            <div v-for="item in newestTV" :key="item.key" class="media-card">
+              <div class="poster-wrapper">
+                <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.title" class="poster" />
+                <div v-else class="no-poster">{{ item.title?.charAt(0) }}</div>
+                <button 
+                  class="add-btn" 
+                  @click="addToQueue(item)"
+                  :disabled="isInQueue(item.key) || isOnDrive(item)"
+                >
+                  <span v-if="isOnDrive(item)">On Drive</span>
+                  <span v-else-if="isInQueue(item.key)">✓</span>
+                  <span v-else>+</span>
+                </button>
+              </div>
+              <div class="media-info">
+                <h3 class="title">{{ item.title }}</h3>
+                <p v-if="item.year" class="year">{{ item.year }}</p>
+              </div>
+            </div>
           </div>
         </div>
+        <router-link to="/library/tv" class="see-all">See all TV Shows</router-link>
       </div>
-      <router-link to="/library/movies" class="see-all">See all Movies</router-link>
+      <div class="dashboard-section">
+        <h2 class="section-title">Newest Movies <span class="plex-note">(Newest in Plex)</span></h2>
+        <div v-if="loadingMovies" class="loading">Loading movies...</div>
+        <div v-else-if="newestMovies.length === 0" class="no-results">No movies found in Plex.</div>
+        <div v-else>
+          <div class="media-grid">
+            <div v-for="item in newestMovies" :key="item.key" class="media-card">
+              <div class="poster-wrapper">
+                <img v-if="item.thumb_url" :src="item.thumb_url" :alt="item.title" class="poster" />
+                <div v-else class="no-poster">{{ item.title?.charAt(0) }}</div>
+                <button 
+                  class="add-btn" 
+                  @click="addToQueue(item)"
+                  :disabled="isInQueue(item.key) || isOnDrive(item)"
+                >
+                  <span v-if="isOnDrive(item)">On Drive</span>
+                  <span v-else-if="isInQueue(item.key)">✓</span>
+                  <span v-else>+</span>
+                </button>
+              </div>
+              <div class="media-info">
+                <h3 class="title">{{ item.title }}</h3>
+                <p v-if="item.year" class="year">{{ item.year }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <router-link to="/library/movies" class="see-all">See all Movies</router-link>
+      </div>
     </div>
   </div>
 </template>
@@ -78,7 +80,9 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
+import useViewMode from '../composables/useViewMode'
 
+const { viewMode, setViewMode, viewOptions } = useViewMode('dashboardViewMode', 'posters')
 const newestTV = ref([])
 const newestMovies = ref([])
 const loadingTV = ref(true)
@@ -90,6 +94,7 @@ const searchResults = ref([])
 const loadingSearch = ref(false)
 const scanned = ref([])
 let searchTimeout
+const showDropdown = ref(false)
 
 function isInQueue(key) {
   return queue.value.has(key)
@@ -159,6 +164,17 @@ async function fetchScanned() {
   }
 }
 
+function getViewComponent(type) {
+  if (viewMode.value === 'posters') return 'PosterGridView'
+  if (viewMode.value === 'overview') return 'OverviewListView'
+  if (viewMode.value === 'table') {
+    if (type === 'tv') return 'TVTableView'
+    if (type === 'movie') return 'MovieTableView'
+    return 'MixedTableView'
+  }
+  return 'PosterGridView'
+}
+
 onMounted(async () => {
   loadingTV.value = true
   loadingMovies.value = true
@@ -180,6 +196,12 @@ onMounted(async () => {
 
 <style scoped>
 .dashboard { padding: 2rem; }
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
 .search-bar-container {
   margin-bottom: 2rem;
   display: flex;
@@ -206,6 +228,52 @@ onMounted(async () => {
   color: #333;
   font-size: 0.95rem;
   font-weight: 400;
+}
+.view-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.view-toggle-btn {
+  background: #23293a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.view-toggle-btn:hover {
+  background: #3b82f6;
+}
+.view-dropdown {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background: #23293a;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  z-index: 10;
+  min-width: 160px;
+  padding: 0.5rem 0;
+}
+.view-option {
+  padding: 0.6rem 1.2rem;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1rem;
+  transition: background 0.15s;
+}
+.view-option:hover {
+  background: #3b82f6;
 }
 .media-grid {
   display: grid;
