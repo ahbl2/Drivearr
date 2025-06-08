@@ -70,7 +70,7 @@
           :isInQueue="isInQueue"
           :isOnDrive="isOnDrive"
         />
-        <div v-if="hasMoreItems && yearFilter" ref="loadMoreTrigger" class="load-more-trigger"></div>
+        <div v-if="hasMoreItems" ref="loadMoreTrigger" class="load-more-trigger"></div>
       </div>
     </div>
   </div>
@@ -209,6 +209,10 @@ async function fetchItems() {
       page: currentPage.value,
       pageSize: 100
     }
+    
+    // Check if we have any active filters
+    const hasActiveFilters = search.value || activeLetter.value || yearFilter.value
+    
     if (search.value) {
       params.search = search.value
     } else if (activeLetter.value && !yearFilter.value) {
@@ -217,15 +221,23 @@ async function fetchItems() {
     if (yearFilter.value && String(yearFilter.value).trim() !== '') {
       params.year = yearFilter.value
     }
+    
+    // If we have active filters, fetch all items at once
+    if (hasActiveFilters) {
+      params.pageSize = 10000 // Large number to get all items
+      params.page = 1
+    }
+    
     const res = await axios.get('/api/plex/browse', { params })
     
-    if (currentPage.value === 1) {
+    if (currentPage.value === 1 || hasActiveFilters) {
       items.value = res.data.results
     } else {
       items.value = [...items.value, ...res.data.results]
     }
     
-    hasMoreItems.value = res.data.results.length === 100
+    // Only enable pagination for unfiltered view
+    hasMoreItems.value = !hasActiveFilters && res.data.results.length === 100
     if (hasMoreItems.value) {
       currentPage.value++
     }
