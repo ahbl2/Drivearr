@@ -19,7 +19,23 @@
             </div>
           </div>
         </div>
-        <div class="alpha-pagination">
+        <div class="filters">
+          <div class="year-filter">
+            <input 
+              type="number" 
+              v-model="yearFilter" 
+              placeholder="Filter by year..."
+              class="year-input"
+            />
+            <button @click="onYearFilter" class="filter-year-btn">
+              <i class="fa fa-filter"></i>
+            </button>
+            <button v-if="yearFilter" @click="clearYearFilter" class="clear-year-btn">
+              <i class="fa fa-times"></i>
+            </button>
+          </div>
+        </div>
+        <div v-if="!yearFilter" class="alpha-pagination">
           <button v-for="letter in alphaLetters" :key="letter" :class="['alpha-btn', { active: letter === activeLetter }]" @click="setAlpha(letter)">{{ letter }}</button>
         </div>
         <div class="search-container">
@@ -54,13 +70,14 @@
           :isInQueue="isInQueue"
           :isOnDrive="isOnDrive"
         />
+        <div v-if="hasMoreItems && yearFilter" ref="loadMoreTrigger" class="load-more-trigger"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, onUnmounted } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
 import useViewMode from '../composables/useViewMode'
@@ -89,6 +106,11 @@ const sectionKey = ref('')
 const sectionSelected = ref(true)
 const scanned = ref([])
 const showDropdown = ref(false)
+const yearFilter = ref('')
+const currentPage = ref(1)
+const hasMoreItems = ref(true)
+const loadMoreTrigger = ref(null)
+const observer = ref(null)
 
 const { viewMode, setViewMode, viewOptions } = useViewMode(props.type + 'ViewMode', 'posters')
 
@@ -157,21 +179,56 @@ async function fetchScanned() {
   }
 }
 
+function clearYearFilter() {
+  yearFilter.value = ''
+  currentPage.value = 1
+  hasMoreItems.value = true
+  items.value = []
+  fetchItems()
+}
+
+function onYearFilter() {
+  const yearStr = String(yearFilter.value);
+  if (/^\d{4}$/.test(yearStr)) {
+    currentPage.value = 1;
+    hasMoreItems.value = true;
+    items.value = [];
+    fetchItems();
+  } else {
+    // Not a valid year, clear results (show all)
+    clearYearFilter();
+  }
+}
+
 async function fetchItems() {
+  if (loading.value) return
   loading.value = true
   try {
     const params = {
       type: props.type,
-      page: 1,
+      page: currentPage.value,
       pageSize: 100
     }
     if (search.value) {
       params.search = search.value
-    } else if (activeLetter.value) {
+    } else if (activeLetter.value && !yearFilter.value) {
       params.startsWith = activeLetter.value
     }
+    if (yearFilter.value && String(yearFilter.value).trim() !== '') {
+      params.year = yearFilter.value
+    }
     const res = await axios.get('/api/plex/browse', { params })
-    items.value = res.data.results
+    
+    if (currentPage.value === 1) {
+      items.value = res.data.results
+    } else {
+      items.value = [...items.value, ...res.data.results]
+    }
+    
+    hasMoreItems.value = res.data.results.length === 100
+    if (hasMoreItems.value) {
+      currentPage.value++
+    }
   } catch (error) {
     toast.error('Failed to fetch content')
     console.error('Error fetching items:', error)
@@ -214,18 +271,46 @@ async function addToQueue(item) {
   }
 }
 
+function setupInfiniteScroll() {
+  if (observer.value) {
+    observer.value.disconnect()
+  }
+
+  observer.value = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && hasMoreItems.value && !loading.value && yearFilter.value) {
+      fetchItems()
+    }
+  })
+
+  if (loadMoreTrigger.value) {
+    observer.value.observe(loadMoreTrigger.value)
+  }
+}
+
 watch(() => props.type, async () => {
   activeLetter.value = '#'
   search.value = ''
+  yearFilter.value = ''
+  currentPage.value = 1
+  hasMoreItems.value = true
+  items.value = []
   await checkSectionSelected()
   if (sectionSelected.value) fetchItems()
   await fetchScanned()
+  setupInfiniteScroll()
 })
 
 onMounted(async () => {
   await checkSectionSelected()
   if (sectionSelected.value) fetchItems()
   await fetchScanned()
+  setupInfiniteScroll()
+})
+
+onUnmounted(() => {
+  if (observer.value) {
+    observer.value.disconnect()
+  }
 })
 </script>
 
@@ -291,6 +376,64 @@ onMounted(async () => {
 
 .view-option:hover {
   background: #3b82f6;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.year-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.year-input {
+  width: 120px;
+  padding: 0.5rem;
+  border: 1px solid #2d3748;
+  border-radius: 0.5rem;
+  background: #1a202c;
+  color: #fff;
+}
+
+.filter-year-btn {
+  background: #23293a;
+  border: none;
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.4rem 0.7rem;
+  margin-left: 0.2rem;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.filter-year-btn:hover {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.clear-year-btn {
+  background: none;
+  border: none;
+  color: #a0aec0;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-year-btn:hover {
+  background: #2d3748;
+  color: #fff;
 }
 
 .alpha-pagination {
@@ -437,6 +580,11 @@ onMounted(async () => {
   text-align: center;
   font-size: 1.2rem;
   margin: 2rem 0;
+}
+
+.load-more-trigger {
+  height: 20px;
+  width: 100%;
 }
 
 @media (max-width: 900px) {

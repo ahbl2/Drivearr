@@ -139,6 +139,7 @@ router.get('/browse', async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const pageSize = parseInt(req.query.pageSize) || 50;
         const recent = req.query.recent === 'true';
+        const year = req.query.year;
 
         // Get the correct section key for the type
         const sectionKey = await getSectionKeyForType(config, type);
@@ -158,6 +159,10 @@ router.get('/browse', async (req, res) => {
         // Add search if provided (only works for /all)
         if (search && !recent) {
             url += `&title=${encodeURIComponent(search)}`;
+        }
+        // Add year filter if provided
+        if (year && !recent) {
+            url += `&year=${encodeURIComponent(year)}`;
         }
         // Add pagination
         let effectivePageSize = pageSize;
@@ -259,15 +264,26 @@ router.get('/browse', async (req, res) => {
             // Already processed as custom show objects
             results = items;
         } else {
-            results = items.map(item => ({
-                key: item.$.ratingKey,
-                title: item.$.title,
-                type: type,
-                thumb_url: item.$.thumb ? `${baseUrl}${item.$.thumb}?X-Plex-Token=${config.PLEX_TOKEN}` : null,
-                year: item.$.year,
-                summary: item.$.summary,
-                // Add any other fields you need
-            }));
+            results = items.map(item => {
+                // Try to get year from year or originallyAvailableAt
+                let year = item.$.year;
+                if (!year && item.$.originallyAvailableAt) {
+                    // originallyAvailableAt is usually in YYYY-MM-DD format
+                    const match = String(item.$.originallyAvailableAt).match(/^(\d{4})/);
+                    if (match) year = match[1];
+                }
+                // Log for debugging
+                // console.log('Movie:', item.$.title, 'Year:', year, 'originallyAvailableAt:', item.$.originallyAvailableAt);
+                return {
+                    key: item.$.ratingKey,
+                    title: item.$.title,
+                    type: type,
+                    thumb_url: item.$.thumb ? `${baseUrl}${item.$.thumb}?X-Plex-Token=${config.PLEX_TOKEN}` : null,
+                    year: year ? String(year) : undefined,
+                    summary: item.$.summary,
+                    // Add any other fields you need
+                };
+            });
             // Apply startsWith filtering if present
             if (startsWith) {
                 results = results.filter(item => {
@@ -282,6 +298,10 @@ router.get('/browse', async (req, res) => {
                     }
                     return false;
                 });
+            }
+            // Apply year filtering here to guarantee correct results
+            if (year && !recent) {
+                results = results.filter(item => String(item.year) === String(year));
             }
         }
 
