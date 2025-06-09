@@ -15,6 +15,13 @@
       <router-link to="/library/tv" class="nav-btn sub" active-class="active">TV Shows</router-link>
     </div>
 
+    <!-- Drive Parent -->
+    <router-link to="/drive" class="nav-btn parent" :class="{ active: isDriveActive }"><i class="fa fa-hdd"></i><span>Drive</span></router-link>
+    <!-- Sub-links: visible when on any /drive or /drive-history page -->
+    <div v-if="isDriveActive" class="sidebar-subnav">
+      <router-link to="/drive/history" class="nav-btn sub" active-class="active">Drive History</router-link>
+    </div>
+
     <!-- Other main nav items -->
     <router-link to="/sync-queue" class="nav-btn" active-class="active"><i class="fa fa-exchange-alt"></i><span>Sync Queue</span></router-link>
     <router-link to="/settings/plex" class="nav-btn" active-class="active"><i class="fa fa-cog"></i><span>Settings</span></router-link>
@@ -27,6 +34,7 @@ import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const isLibraryActive = computed(() => route.path.startsWith('/library'))
+const isDriveActive = computed(() => route.path.startsWith('/drive'))
 </script>
 
 <style scoped>

@@ -80,6 +80,26 @@ CREATE TABLE IF NOT EXISTS local_media_index (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Drive Profiles
+CREATE TABLE IF NOT EXISTS drive_profiles (
+    drive_id TEXT PRIMARY KEY,
+    profile_name TEXT NOT NULL,
+    profile_label TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL
+);
+
+-- Drive History
+CREATE TABLE IF NOT EXISTS drive_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    drive_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    source TEXT NOT NULL,
+    status TEXT NOT NULL,
+    error TEXT,
+    timestamp TIMESTAMP NOT NULL,
+    FOREIGN KEY (drive_id) REFERENCES drive_profiles(drive_id) ON DELETE CASCADE
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_media_items_type ON media_items(type);
 CREATE INDEX IF NOT EXISTS idx_media_items_sync_status ON media_items(sync_status);

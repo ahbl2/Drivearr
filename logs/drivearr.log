@@ -5857,3 +5857,33 @@
 {"timestamp":"2025-06-09T05:01:30.720Z","level":"error","message":"Sync error: Error: ENOENT: no such file or directory, open 'C:\\usbdrives\\FriendsDrive\\.plex2drive.json'"}
 {"timestamp":"2025-06-09T05:06:35.093Z","level":"info","message":"Database initialized successfully"}
 {"timestamp":"2025-06-09T05:06:35.111Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T12:22:34.621Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T12:22:34.644Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T12:22:51.581Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T15:19:04.882Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T15:19:04.899Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T16:57:09.638Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T16:57:09.653Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T16:57:32.421Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:03:48.784Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T17:03:48.800Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T17:04:23.413Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:04:24.178Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:04:25.494Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:13:43.593Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T17:13:43.611Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T17:42:30.925Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T17:42:30.942Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T17:42:54.224Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:42:58.691Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:42:58.730Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:43:02.550Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:43:10.011Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:52:39.781Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T17:52:39.796Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T17:52:46.665Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:53:11.011Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:53:18.455Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:53:24.899Z","level":"error","message":"TypeError: scanned.map is not a function\n    at C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\usb.js:18:28"}
+{"timestamp":"2025-06-09T17:55:59.416Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T17:55:59.432Z","level":"info","message":"Sync service initialized"}

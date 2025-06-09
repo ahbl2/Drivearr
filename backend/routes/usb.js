@@ -15,7 +15,10 @@ router.get('/scanned', async (req, res) => {
     const scanned = await scanDrive(usbRoot)
     const manifest = await readManifest(usbRoot)
 
-    const result = scanned.map(file => {
+    // Defensive: ensure scanned is always an array
+    const scannedArray = Array.isArray(scanned) ? scanned : []
+
+    const result = scannedArray.map(file => {
       const inManifest = manifest.synced.find(e =>
         file.type === 'episode'
           ? e.type === 'episode' &&

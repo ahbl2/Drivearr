@@ -3,6 +3,8 @@ import LibraryDashboard from './components/LibraryDashboard.vue'
 import SyncQueue from './components/SyncQueue.vue'
 import Settings from './components/Settings.vue'
 import BrowseContent from './components/BrowseContent.vue'
+import Drive from './components/Drive.vue'
+import DriveHistory from './components/DriveHistory.vue'
 
 const routes = [
   { path: '/', redirect: '/library' },
@@ -19,6 +21,8 @@ const routes = [
     component: BrowseContent,
     props: { type: 'show' }
   },
+  { path: '/drive', component: Drive },
+  { path: '/drive/history', component: DriveHistory },
   { path: '/sync-queue', component: SyncQueue },
   { path: '/settings/:tab?', component: Settings }
 ]
