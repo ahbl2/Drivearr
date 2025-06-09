@@ -5830,3 +5830,10 @@
 {"timestamp":"2025-06-09T00:08:54.059Z","level":"info","message":"Sync service initialized"}
 {"timestamp":"2025-06-09T00:19:32.393Z","level":"info","message":"Database initialized successfully"}
 {"timestamp":"2025-06-09T00:19:32.409Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T00:44:43.812Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T00:44:43.949Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T00:51:29.041Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T00:51:29.068Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T01:04:06.955Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T01:04:06.970Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T01:05:22.418Z","level":"error","message":"Sync error: TypeError [ERR_INVALID_ARG_TYPE]: The \"path\" argument must be of type string. Received null\n    at Object.basename (node:path:819:5)\n    at syncQueueToDrive (C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\services\\syncEngine.js:114:27)\n    at async C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\sync.js:93:20"}

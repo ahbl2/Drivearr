@@ -1,6 +1,7 @@
 <template>
   <div class="sync-queue">
     <h3 class="queue-title">Sync Queue</h3>
+    <div v-if="driveStatusMsg" :class="['drive-status-msg', driveAttached ? 'attached' : 'detached']">{{ driveStatusMsg }}</div>
     <div v-if="driveCheckError" class="empty-msg" style="color:#f87171; font-weight:600;">{{ driveCheckError }}</div>
     <div v-if="loading" class="empty-msg">Loading sync queue...</div>
     <div v-else-if="error" class="empty-msg">{{ error }}</div>
@@ -72,6 +73,8 @@ const totalItems = ref(0)
 const driveAttached = ref(true)
 const driveCheckError = ref('')
 let driveCheckInterval = null
+const driveStatusMsg = ref('')
+const currentDrive = ref('')
 
 const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value))
 
@@ -199,26 +202,30 @@ const nextPage = () => {
   }
 }
 
-async function checkDriveAttached() {
+async function checkDriveStatus() {
   try {
-    const res = await axios.get('/api/usb/scanned')
-    if (Array.isArray(res.data) && res.data.length > 0) {
-      driveAttached.value = true
+    const res = await axios.get('/api/usb/status')
+    currentDrive.value = res.data.mediaPath || ''
+    driveAttached.value = !!(res.data.present && res.data.mediaPath)
+    if (driveAttached.value) {
+      driveStatusMsg.value = `Drive attached: ${currentDrive.value}`
       driveCheckError.value = ''
     } else {
-      driveAttached.value = false
+      driveStatusMsg.value = ''
       driveCheckError.value = 'No drive detected or drive is empty. Please attach a drive to enable syncing.'
     }
-  } catch (err) {
+  } catch {
     driveAttached.value = false
-    driveCheckError.value = 'No drive detected or drive is not accessible. Please attach a drive to enable syncing.'
+    currentDrive.value = ''
+    driveStatusMsg.value = ''
+    driveCheckError.value = 'No drive detected or drive is empty. Please attach a drive to enable syncing.'
   }
 }
 
 onMounted(async () => {
   await fetchQueue()
-  await checkDriveAttached()
-  driveCheckInterval = setInterval(checkDriveAttached, 5000)
+  await checkDriveStatus()
+  driveCheckInterval = setInterval(checkDriveStatus, 5000)
 })
 
 onUnmounted(() => {
@@ -455,5 +462,17 @@ onUnmounted(() => {
 }
 .pagination button:hover:not(:disabled) {
   background: #2563eb;
+}
+.drive-status-msg {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+.drive-status-msg.attached {
+  color: #34d399;
+}
+.drive-status-msg.detached {
+  color: #f87171;
 }
 </style>

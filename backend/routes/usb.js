@@ -4,6 +4,9 @@ const { scanDrive } = require('../services/driveScanner')
 const fs = require('fs-extra')
 const { readManifest } = require('../services/manifestManager')
 const logger = require('../services/logger')
+const os = require('os')
+const path = require('path')
+const { loadConfig } = require('../config/configManager')
 
 const usbRoot = process.env.USB_MOUNT_ROOT || '/usbdrives/FriendsDrive'
 
@@ -45,6 +48,49 @@ router.post('/remove', async (req, res) => {
   } catch (err) {
     logger.error('Remove error: ' + formatError(err))
     res.status(500).json({ error: 'Failed to delete item' })
+  }
+})
+
+// Discover available drives/mount points
+router.get('/discover', async (req, res) => {
+  try {
+    let drives = []
+    if (os.platform() === 'win32') {
+      // Windows: list all drive letters
+      const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => l + ':\\')
+      drives = possible.filter(p => {
+        try { return fs.existsSync(p) } catch { return false }
+      })
+    } else {
+      // Linux/Unraid: check common mount points
+      const mountDirs = ['/mnt/disks', '/mnt/remotes', '/media', '/usbdrives']
+      for (const dir of mountDirs) {
+        if (fs.existsSync(dir)) {
+          const subdirs = fs.readdirSync(dir).map(f => path.join(dir, f)).filter(f => fs.lstatSync(f).isDirectory())
+          drives.push(...subdirs)
+        }
+      }
+    }
+    res.json({ drives })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to discover drives.' })
+  }
+})
+
+// Get current attached drive status
+router.get('/status', async (req, res) => {
+  try {
+    const config = await loadConfig()
+    const mediaPath = config && config.MEDIA_PATH
+    let present = false
+    if (mediaPath) {
+      try {
+        present = fs.existsSync(mediaPath) && fs.lstatSync(mediaPath).isDirectory()
+      } catch {}
+    }
+    res.json({ mediaPath, present })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get drive status.' })
   }
 })
 
