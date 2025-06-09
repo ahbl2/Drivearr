@@ -1,6 +1,12 @@
 <template>
   <div class="browse-content">
-    <div v-if="!sectionSelected" class="no-section-msg">
+    <div class="browse-header">
+      <span class="source-toggle">
+        <button :class="['toggle-btn', sourceType === 'plex' ? 'active' : '']" @click="setSource('plex')">Plex</button>
+        <button :class="['toggle-btn', sourceType === 'local' ? 'active' : '']" @click="setSource('local')">Local</button>
+      </span>
+    </div>
+    <div v-if="!sectionSelected && sourceType === 'plex'" class="no-section-msg">
       <p>Please select a {{ type === 'movie' ? 'Movies' : 'TV Shows' }} section in Plex Settings first.</p>
     </div>
     <div v-else>
@@ -21,6 +27,7 @@
         @prevPage="prevPage"
         @nextPage="nextPage"
       />
+      <div class="source-badge">Source: {{ sourceTypeLabel }}</div>
       <div v-if="loading" class="loading">Loading...</div>
       <div v-else-if="items.length === 0" class="no-results">
         No {{ type === 'movie' ? 'movies' : 'TV shows' }} found.
@@ -85,6 +92,8 @@ const currentPage = ref(1)
 const hasMoreItems = ref(true)
 const loadMoreTrigger = ref(null)
 const observer = ref(null)
+const sourceType = ref('plex')
+const sourceTypeLabel = computed(() => sourceType.value === 'plex' ? 'Plex' : 'Local')
 
 const { viewMode, setViewMode, viewOptions } = useViewMode(props.type + 'ViewMode', 'posters')
 
@@ -174,46 +183,79 @@ function onYearFilter() {
   }
 }
 
+function setSource(type) {
+  sourceType.value = type
+  fetchItems()
+}
+
 async function fetchItems() {
   if (loading.value) return
   loading.value = true
   try {
-    const params = {
-      type: props.type,
-      page: currentPage.value,
-      pageSize: 100
-    }
-    
-    // Check if we have any active filters
-    const hasActiveFilters = search.value || activeLetter.value || yearFilter.value
-    
-    if (search.value) {
-      params.search = search.value
-    } else if (activeLetter.value && !yearFilter.value) {
-      params.startsWith = activeLetter.value
-    }
-    if (yearFilter.value && String(yearFilter.value).trim() !== '') {
-      params.year = yearFilter.value
-    }
-    
-    // If we have active filters, fetch all items at once
-    if (hasActiveFilters) {
-      params.pageSize = 10000 // Large number to get all items
-      params.page = 1
-    }
-    
-    const res = await axios.get('/api/plex/browse', { params })
-    
-    if (currentPage.value === 1 || hasActiveFilters) {
-      items.value = res.data.results
+    if (sourceType.value === 'plex') {
+      const params = {
+        type: props.type,
+        page: currentPage.value,
+        pageSize: 100
+      }
+      
+      // Check if we have any active filters
+      const hasActiveFilters = search.value || activeLetter.value || yearFilter.value
+      
+      if (search.value) {
+        params.search = search.value
+      } else if (activeLetter.value && !yearFilter.value) {
+        params.startsWith = activeLetter.value
+      }
+      if (yearFilter.value && String(yearFilter.value).trim() !== '') {
+        params.year = yearFilter.value
+      }
+      
+      // If we have active filters, fetch all items at once
+      if (hasActiveFilters) {
+        params.pageSize = 10000 // Large number to get all items
+        params.page = 1
+      }
+      
+      const res = await axios.get('/api/plex/browse', { params })
+      
+      if (currentPage.value === 1 || hasActiveFilters) {
+        items.value = res.data.results
+      } else {
+        items.value = [...items.value, ...res.data.results]
+      }
+      
+      // Only enable pagination for unfiltered view
+      hasMoreItems.value = !hasActiveFilters && res.data.results.length === 100
+      if (hasMoreItems.value) {
+        currentPage.value++
+      }
     } else {
-      items.value = [...items.value, ...res.data.results]
-    }
-    
-    // Only enable pagination for unfiltered view
-    hasMoreItems.value = !hasActiveFilters && res.data.results.length === 100
-    if (hasMoreItems.value) {
-      currentPage.value++
+      // Local source
+      const res = await axios.get('/api/config/local-media-index')
+      let all = res.data.items || []
+      // Filter by type
+      all = all.filter(i => i.type === (props.type === 'show' ? 'episode' : 'movie') && i.metadata)
+      // Group TV episodes by show for 'show' type
+      if (props.type === 'show') {
+        const tvShowsMap = {}
+        for (const item of all) {
+          const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata
+          const showKey = meta.show_tmdb_id || meta.id || item.title
+          if (!tvShowsMap[showKey]) {
+            tvShowsMap[showKey] = { ...item, meta, latestMtime: item.mtime }
+          }
+          if (item.mtime > tvShowsMap[showKey].latestMtime) {
+            tvShowsMap[showKey].latestMtime = item.mtime
+          }
+        }
+        items.value = Object.values(tvShowsMap)
+          .sort((a, b) => b.latestMtime - a.latestMtime)
+      } else {
+        // Movies: sort by mtime
+        items.value = all.sort((a, b) => b.mtime - a.mtime)
+      }
+      hasMoreItems.value = false
     }
   } catch (error) {
     toast.error('Failed to fetch content')
@@ -579,6 +621,41 @@ function nextPage() { /* TODO: Implement next page logic */ }
 .load-more-trigger {
   height: 20px;
   width: 100%;
+}
+
+.source-toggle {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.toggle-btn {
+  background: #23293a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.toggle-btn.active {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.toggle-btn:not(.active):hover {
+  background: #334155;
+}
+
+.source-badge {
+  color: #3b82f6;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
 }
 
 @media (max-width: 900px) {

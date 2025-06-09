@@ -24,26 +24,46 @@ Transition Drivearr from relying solely on Plex for metadata and file paths to a
 - [ ] Identify best open-source libraries/APIs for metadata (e.g., [TMDb API](https://www.themoviedb.org/documentation/api), [TheTVDB API](https://thetvdb.github.io/v4-api/))
 
 ### 2. **Media Folder Configuration**
-- [ ] UI: Let users specify one or more media root folders (Movies, TV, etc.)
-- [ ] Backend: Store and manage these paths
+- [x] UI: Let users specify one or more media root folders (Movies, TV, etc.)
+- [x] Backend: Store and manage these paths
 
-*Next step: Begin UI and backend for folder configuration.*
+**Summary:**
+- Users can now add TV Show and Movie folders via the settings UI, including browsing for folders using a folder picker dialog. The backend stores these paths separately for TV and Movies.
+
+*Next step: Begin local media scanning and indexing logic.*
 
 ### 3. **Local Media Scanning**
-- [ ] Recursively scan configured folders for media files
-- [ ] Build a local index (filename, size, date, etc.)
-- [ ] Detect new, moved, or deleted files
+- [x] Recursively scan configured folders for media files
+- [x] Build a local index (filename, size, date, etc.)
+- [x] Detect new, moved, or deleted files
+
+**Summary:**
+- Real-time file watching is implemented using chokidar. The backend instantly updates the local media index for new, changed, or deleted files in all configured folders.
+- The index is always up-to-date on startup, and whenever folders are added or removed.
+
+*Next step: Metadata Fetching & Matching.*
 
 ### 4. **Metadata Fetching & Matching**
-- [ ] For each file, attempt to match to online metadata (by filename, folder, etc.)
-- [ ] Store matched metadata (title, year, poster, summary, etc.)
-- [ ] Handle ambiguous or unmatched files (UI for manual match?)
-- [ ] Reference Sonarr's matching logic for best practices
+- [x] For each file, attempt to match to online metadata (by filename, folder, etc.)
+- [x] Store matched metadata (title, year, poster, summary, etc.)
+- [x] Handle ambiguous or unmatched files (UI for manual match?)
+- [x] Reference Sonarr's matching logic for best practices
+
+**Summary:**
+- Improved fuzzy matching using string-similarity, year/season/episode logic, and parent folder for TV.
+- Modal dialog UI for manual correction of unmatched files, with instant backend update.
+
+*Next step: UI integration (show local library, add to sync queue, etc.).*
 
 ### 5. **UI Integration**
-- [ ] Show local library using matched metadata (not just Plex)
+- [x] Show local library using matched metadata (not just Plex)
 - [ ] Allow adding to sync queue using real file paths
 - [ ] Show unmatched files and allow user to match/correct
+
+**Summary:**
+- Plex/Local toggle now available on all library pages (dashboard, TV, Movies), with seamless UI and data source swap. Users can browse their local indexed library or Plex library with a single click.
+
+*Next: sync queue integration, etc.*
 
 ### 6. **Retain Plex Integration**
 - [ ] Keep Plex API integration for:
@@ -80,10 +100,11 @@ Transition Drivearr from relying solely on Plex for metadata and file paths to a
 **Checklist Progress:**
 - [x] Research: Sonarr/Radarr folder scanning/indexing and matching logic
 - [ ] Research: Best metadata APIs
-- [ ] Folder config UI
-- [ ] Local scan/index
-- [ ] Metadata fetch/match
-- [ ] UI integration
+- [x] Folder config UI
+- [x] Backend: Store and manage these paths
+- [x] Local scan/index
+- [x] Metadata fetch/match
+- [x] UI integration
 - [ ] Plex integration retained
 - [ ] Sync logic updated
 - [ ] Migration tested 

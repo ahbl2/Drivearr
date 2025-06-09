@@ -65,6 +65,21 @@ CREATE TABLE IF NOT EXISTS sync_queue (
     metadata JSON
 );
 
+-- Local Media Index
+CREATE TABLE IF NOT EXISTS local_media_index (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    path TEXT UNIQUE NOT NULL,
+    type TEXT NOT NULL, -- 'movie' or 'episode'
+    title TEXT NOT NULL,
+    season INTEGER,
+    episode INTEGER,
+    size INTEGER,
+    mtime INTEGER,
+    hash TEXT,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_media_items_type ON media_items(type);
 CREATE INDEX IF NOT EXISTS idx_media_items_sync_status ON media_items(sync_status);

@@ -32,10 +32,28 @@ app.get('*', (req, res) => {
 // --- Initialization order: database -> syncService -> server ---
 const databaseService = require('./services/databaseService');
 const syncService = require('./services/syncService');
+const { scanAndIndexMediaFolders, startWatchingMediaFolders } = require('./services/driveScanner');
+const { loadConfig } = require('./config/configManager');
 
 databaseService.initialize()
   .then(() => syncService.initialize())
-  .then(() => {
+  .then(async () => {
+    // Auto-scan all configured media folders on startup
+    try {
+      const config = await loadConfig();
+      const tvFolders = Array.isArray(config.TV_SHOW_FOLDERS) ? config.TV_SHOW_FOLDERS : [];
+      const movieFolders = Array.isArray(config.MOVIE_FOLDERS) ? config.MOVIE_FOLDERS : [];
+      const allFolders = [...tvFolders, ...movieFolders];
+      if (allFolders.length > 0) {
+        const indexed = await scanAndIndexMediaFolders(allFolders);
+        await startWatchingMediaFolders(allFolders);
+        console.log(`Auto-scanned and watching media folders on startup. Indexed ${indexed.length} files.`);
+      } else {
+        console.log('No media folders configured for auto-scan.');
+      }
+    } catch (err) {
+      console.error('Auto-scan on startup failed:', err);
+    }
     app.listen(port, () => {
       console.log(`Drivearr backend running at http://localhost:${port}`);
     });

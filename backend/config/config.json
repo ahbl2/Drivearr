@@ -7,5 +7,6 @@
   "PLEX_SHOWS_SECTION_KEY": "2",
   "SYNC_DRIVE_PATH": "E:\\",
   "TV_SHOW_FOLDERS": [],
-  "MOVIE_FOLDERS": []
+  "MOVIE_FOLDERS": [],
+  "TMDB_API_KEY": "8bbc89cf3cbc86affff79b3499e965b5"
 }

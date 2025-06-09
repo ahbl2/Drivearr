@@ -191,6 +191,34 @@ class DatabaseService {
         return stmt.run();
     }
 
+    // Local Media Index Operations
+    async upsertLocalMedia(item) {
+        const stmt = this.db.prepare(`
+            INSERT INTO local_media_index (path, type, title, season, episode, size, mtime, hash, added_at, updated_at)
+            VALUES (@path, @type, @title, @season, @episode, @size, @mtime, @hash, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT(path) DO UPDATE SET
+                type = @type,
+                title = @title,
+                season = @season,
+                episode = @episode,
+                size = @size,
+                mtime = @mtime,
+                hash = @hash,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+        return stmt.run(item);
+    }
+
+    async getLocalMediaAll() {
+        const stmt = this.db.prepare('SELECT * FROM local_media_index ORDER BY title');
+        return stmt.all();
+    }
+
+    async removeLocalMediaByPath(path) {
+        const stmt = this.db.prepare('DELETE FROM local_media_index WHERE path = ?');
+        return stmt.run(path);
+    }
+
     // Close database connection
     close() {
         if (this.db) {
