@@ -81,14 +81,14 @@ router.get('/discover', async (req, res) => {
 router.get('/status', async (req, res) => {
   try {
     const config = await loadConfig()
-    const mediaPath = config && config.MEDIA_PATH
+    const syncDrivePath = config && config.SYNC_DRIVE_PATH
     let present = false
-    if (mediaPath) {
+    if (syncDrivePath) {
       try {
-        present = fs.existsSync(mediaPath) && fs.lstatSync(mediaPath).isDirectory()
+        present = fs.existsSync(syncDrivePath) && fs.lstatSync(syncDrivePath).isDirectory()
       } catch {}
     }
-    res.json({ mediaPath, present })
+    res.json({ syncDrivePath, present })
   } catch (err) {
     res.status(500).json({ error: 'Failed to get drive status.' })
   }

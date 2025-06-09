@@ -205,8 +205,8 @@ const nextPage = () => {
 async function checkDriveStatus() {
   try {
     const res = await axios.get('/api/usb/status')
-    currentDrive.value = res.data.mediaPath || ''
-    driveAttached.value = !!(res.data.present && res.data.mediaPath)
+    currentDrive.value = res.data.syncDrivePath || ''
+    driveAttached.value = !!(res.data.present && res.data.syncDrivePath)
     if (driveAttached.value) {
       driveStatusMsg.value = `Drive attached: ${currentDrive.value}`
       driveCheckError.value = ''

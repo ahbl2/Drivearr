@@ -1,54 +1,139 @@
 <template>
-  <form @submit.prevent="save" class="settings-form">
-    <label>Media Path:</label>
-    <input v-model="form.MEDIA_PATH" required />
-    <button type="button" class="detect-btn" @click="detectDrives">Detect Drives</button>
-    <div v-if="drives.length" class="drives-list">
-      <label>Select a drive:</label>
-      <select v-model="form.MEDIA_PATH">
-        <option v-for="d in drives" :key="d" :value="d">{{ d }}</option>
-      </select>
+  <div class="settings-form">
+    <!-- Sync Drive Section -->
+    <div class="section">
+      <h3>Sync Drive</h3>
+      <p class="section-description">Select the drive where media will be synced to</p>
+      <div class="drive-selector">
+        <input v-model="syncDrivePath" placeholder="Drive path..." readonly />
+        <button type="button" class="detect-btn" @click="detectDrives">Detect Drives</button>
+        <select v-if="drives.length" v-model="syncDrivePath" class="drives-select">
+          <option v-for="d in drives" :key="d" :value="d">{{ d }}</option>
+        </select>
+        <button class="save-btn" @click="saveSyncDrive">Save Drive</button>
+      </div>
+      <div v-if="driveStatusMsg" :class="['drive-status-msg', driveAttached ? 'attached' : 'detached']">
+        {{ driveStatusMsg }}
+      </div>
     </div>
-    <div v-if="driveStatusMsg" :class="['drive-status-msg', driveAttached ? 'attached' : 'detached']">{{ driveStatusMsg }}</div>
-    <button class="save-btn" type="submit">Save Media Settings</button>
+
+    <!-- TV Show Folders Section -->
+    <div class="section">
+      <h3>TV Show Folders</h3>
+      <p class="section-description">Add folders containing your TV shows to scan from</p>
+      <ul class="folders-list">
+        <li v-for="folder in tvFolders" :key="folder">
+          <span>{{ folder }}</span>
+          <button class="remove-folder-btn" @click="removeTvFolder(folder)">Remove</button>
+        </li>
+      </ul>
+      <div class="add-folder-row">
+        <input v-model="newTvFolder" placeholder="Add TV show folder path..." />
+        <input ref="tvFolderInput" type="file" webkitdirectory directory multiple style="display:none" @change="onTvFolderPicked" />
+        <button class="add-folder-btn" @click="triggerTvFolderPicker">Browse</button>
+        <button class="add-folder-btn" @click="addTvFolder">Add Folder</button>
+      </div>
+    </div>
+
+    <!-- Movie Folders Section -->
+    <div class="section">
+      <h3>Movie Folders</h3>
+      <p class="section-description">Add folders containing your movies to scan from</p>
+      <ul class="folders-list">
+        <li v-for="folder in movieFolders" :key="folder">
+          <span>{{ folder }}</span>
+          <button class="remove-folder-btn" @click="removeMovieFolder(folder)">Remove</button>
+        </li>
+      </ul>
+      <div class="add-folder-row">
+        <input v-model="newMovieFolder" placeholder="Add movie folder path..." />
+        <input ref="movieFolderInput" type="file" webkitdirectory directory multiple style="display:none" @change="onMovieFolderPicked" />
+        <button class="add-folder-btn" @click="triggerMovieFolderPicker">Browse</button>
+        <button class="add-folder-btn" @click="addMovieFolder">Add Folder</button>
+      </div>
+    </div>
+
     <div v-if="successMsg" class="success-msg">{{ successMsg }}</div>
-  </form>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 
-const form = ref({ MEDIA_PATH: '' })
+const syncDrivePath = ref('')
+const tvFolders = ref([])
+const movieFolders = ref([])
+const newTvFolder = ref('')
+const newMovieFolder = ref('')
 const drives = ref([])
 const successMsg = ref('')
 const driveAttached = ref(true)
 const driveStatusMsg = ref('')
 let driveCheckInterval = null
 
+const tvFolderInput = ref(null)
+const movieFolderInput = ref(null)
+
+const triggerTvFolderPicker = () => {
+  tvFolderInput.value && tvFolderInput.value.click()
+}
+const triggerMovieFolderPicker = () => {
+  movieFolderInput.value && movieFolderInput.value.click()
+}
+
+const onTvFolderPicked = (e) => {
+  const files = e.target.files
+  if (files && files.length > 0) {
+    // Get the common root folder
+    const first = files[0]
+    let folderPath = ''
+    if (first.webkitRelativePath) {
+      folderPath = first.webkitRelativePath.split('/')[0]
+    }
+    if (folderPath) {
+      // On Windows, webkitRelativePath uses \\ as separator
+      folderPath = folderPath.replace(/\\/g, '/')
+      newTvFolder.value = folderPath
+    }
+  }
+}
+const onMovieFolderPicked = (e) => {
+  const files = e.target.files
+  if (files && files.length > 0) {
+    const first = files[0]
+    let folderPath = ''
+    if (first.webkitRelativePath) {
+      folderPath = first.webkitRelativePath.split('/')[0]
+    }
+    if (folderPath) {
+      folderPath = folderPath.replace(/\\/g, '/')
+      newMovieFolder.value = folderPath
+    }
+  }
+}
+
 const loadConfig = async () => {
   try {
     const res = await axios.get('/api/config')
-    if (res.data && res.data.MEDIA_PATH) {
-      form.value.MEDIA_PATH = res.data.MEDIA_PATH
-    }
+    syncDrivePath.value = res.data.SYNC_DRIVE_PATH || ''
+    tvFolders.value = Array.isArray(res.data.TV_SHOW_FOLDERS) ? res.data.TV_SHOW_FOLDERS : []
+    movieFolders.value = Array.isArray(res.data.MOVIE_FOLDERS) ? res.data.MOVIE_FOLDERS : []
   } catch {}
 }
 
 const checkDriveStatus = async () => {
   try {
     const res = await axios.get('/api/usb/status')
-    driveAttached.value = !!(res.data.present && res.data.mediaPath)
+    driveAttached.value = !!(res.data.present && res.data.syncDrivePath)
     if (driveAttached.value) {
-      driveStatusMsg.value = `Drive attached: ${res.data.mediaPath}`
+      driveStatusMsg.value = `Drive attached: ${res.data.syncDrivePath}`
     } else {
       driveStatusMsg.value = 'No drive detected or drive is empty. Please attach a drive.'
-      form.value.MEDIA_PATH = ''
     }
   } catch {
     driveAttached.value = false
     driveStatusMsg.value = 'No drive detected or drive is empty. Please attach a drive.'
-    form.value.MEDIA_PATH = ''
   }
 }
 
@@ -57,21 +142,69 @@ const detectDrives = async () => {
     const res = await axios.get('/api/usb/discover')
     drives.value = res.data.drives || []
     if (drives.value.length === 1) {
-      form.value.MEDIA_PATH = drives.value[0]
+      syncDrivePath.value = drives.value[0]
     }
   } catch (err) {
     alert('Failed to detect drives')
   }
 }
 
-const save = async () => {
+const saveSyncDrive = async () => {
+  if (!syncDrivePath.value) return
   try {
-    await axios.post('/api/config', form.value)
-    successMsg.value = 'Media path saved!'
-    await loadConfig()
-    setTimeout(() => { successMsg.value = '' }, 2500)
-  } catch (err) {
-    alert('Failed to save media settings')
+    const res = await axios.post('/api/config/sync-drive', { path: syncDrivePath.value })
+    successMsg.value = 'Sync drive saved!'
+    setTimeout(() => { successMsg.value = '' }, 2000)
+  } catch {
+    alert('Failed to save sync drive')
+  }
+}
+
+const addTvFolder = async () => {
+  if (!newTvFolder.value) return
+  try {
+    const res = await axios.post('/api/config/add-tv-folder', { folder: newTvFolder.value })
+    tvFolders.value = res.data.TV_SHOW_FOLDERS
+    newTvFolder.value = ''
+    successMsg.value = 'TV folder added!'
+    setTimeout(() => { successMsg.value = '' }, 2000)
+  } catch {
+    alert('Failed to add TV folder')
+  }
+}
+
+const removeTvFolder = async (folder) => {
+  try {
+    const res = await axios.post('/api/config/remove-tv-folder', { folder })
+    tvFolders.value = res.data.TV_SHOW_FOLDERS
+    successMsg.value = 'TV folder removed!'
+    setTimeout(() => { successMsg.value = '' }, 2000)
+  } catch {
+    alert('Failed to remove TV folder')
+  }
+}
+
+const addMovieFolder = async () => {
+  if (!newMovieFolder.value) return
+  try {
+    const res = await axios.post('/api/config/add-movie-folder', { folder: newMovieFolder.value })
+    movieFolders.value = res.data.MOVIE_FOLDERS
+    newMovieFolder.value = ''
+    successMsg.value = 'Movie folder added!'
+    setTimeout(() => { successMsg.value = '' }, 2000)
+  } catch {
+    alert('Failed to add movie folder')
+  }
+}
+
+const removeMovieFolder = async (folder) => {
+  try {
+    const res = await axios.post('/api/config/remove-movie-folder', { folder })
+    movieFolders.value = res.data.MOVIE_FOLDERS
+    successMsg.value = 'Movie folder removed!'
+    setTimeout(() => { successMsg.value = '' }, 2000)
+  } catch {
+    alert('Failed to remove movie folder')
   }
 }
 
@@ -94,7 +227,7 @@ onUnmounted(() => {
   color: #fff;
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 2rem;
   width: 100%;
   box-sizing: border-box;
   align-items: center;
@@ -102,61 +235,104 @@ onUnmounted(() => {
   align-self: stretch;
   margin: 0;
 }
-@media (max-width: 900px) {
-  .settings-form {
-    max-width: none !important;
-    width: 100% !important;
-    margin: 0 !important;
-    border-radius: 0;
-    box-shadow: none;
-    padding: 1rem 0.5rem;
-  }
-}
-@media (max-width: 600px) {
-  .settings-form {
-    padding: 0.2rem 0.2rem;
-  }
-}
-label {
-  color: #bfc7d5;
-  font-size: 1rem;
-  margin-bottom: 0.2rem;
-  align-self: flex-start;
-}
-input {
+
+.section {
   width: 100%;
-  box-sizing: border-box;
-  padding: 0.7rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #bfc7d5;
+}
+
+.section-description {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.drive-selector {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  width: 100%;
+}
+
+.folders-list {
+  width: 100%;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.folders-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #181c24;
   border-radius: 6px;
-  border: 1px solid #334155;
+  padding: 0.7rem 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.remove-folder-btn {
+  background: #f87171;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.remove-folder-btn:hover {
+  background: #dc2626;
+}
+
+.add-folder-row {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  width: 100%;
+}
+
+input {
+  flex: 1;
   background: #181c24;
   color: #fff;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 0.7rem 1rem;
   font-size: 1rem;
-  margin-bottom: 0.5rem;
-  transition: border 0.2s;
 }
+
 input:focus {
-  border: 1.5px solid #3b82f6;
   outline: none;
+  border-color: #3b82f6;
 }
-.save-btn {
+
+.add-folder-btn, .save-btn {
   background: #3b82f6;
   color: #fff;
   border: none;
   border-radius: 6px;
-  padding: 0.9rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-top: 1.5rem;
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  width: 100%;
-  max-width: 340px;
 }
-.save-btn:hover {
+
+.add-folder-btn:hover, .save-btn:hover {
   background: #2563eb;
 }
+
 .detect-btn {
   background: #2563eb;
   color: #fff;
@@ -165,50 +341,45 @@ input:focus {
   padding: 0.7rem 1.2rem;
   font-size: 1rem;
   font-weight: 500;
-  margin-bottom: 0.7rem;
   cursor: pointer;
   transition: background 0.2s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
 }
+
 .detect-btn:hover {
   background: #3b82f6;
 }
-.drives-list {
-  width: 100%;
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-select {
-  width: 100%;
-  padding: 0.7rem 1rem;
-  border-radius: 6px;
-  border: 1px solid #334155;
+
+.drives-select {
   background: #181c24;
   color: #fff;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  padding: 0.7rem 1.2rem;
   font-size: 1rem;
 }
+
+.drive-status-msg {
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.drive-status-msg.attached {
+  color: #34d399;
+}
+
+.drive-status-msg.detached {
+  color: #f87171;
+}
+
 .success-msg {
   color: #34d399;
   background: #23293a;
   border-radius: 6px;
   padding: 0.7rem 1.2rem;
-  margin-top: 1rem;
   font-size: 1.1rem;
   font-weight: 600;
   text-align: center;
-}
-.drive-status-msg {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  text-align: center;
-}
-.drive-status-msg.attached {
-  color: #34d399;
-}
-.drive-status-msg.detached {
-  color: #f87171;
 }
 </style> 

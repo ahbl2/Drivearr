@@ -5,5 +5,7 @@
   "PLEX_SSL": false,
   "PLEX_MOVIES_SECTION_KEY": "1",
   "PLEX_SHOWS_SECTION_KEY": "2",
-  "MEDIA_PATH": "E:\\"
+  "SYNC_DRIVE_PATH": "E:\\",
+  "TV_SHOW_FOLDERS": [],
+  "MOVIE_FOLDERS": []
 }
