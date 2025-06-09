@@ -4,57 +4,63 @@ const { scanDrive } = require('../services/driveScanner');
 const { syncQueueToDrive } = require('../services/syncEngine');
 const { writeManifest } = require('../services/manifestManager');
 const logger = require('../services/logger');
+const databaseService = require('../services/databaseService');
 
 const usbRoot = process.env.USB_MOUNT_ROOT || '/usbdrives/FriendsDrive';
 
-// In-memory sync queue (replace with persistent storage if needed)
-let syncQueue = [];
-
 // Get the current sync queue
-router.get('/queue', (req, res) => {
+router.get('/queue', async (req, res) => {
   let page = parseInt(req.query.page) || 1;
   if (page < 1) page = 1;
   const pageSize = parseInt(req.query.pageSize) || 20;
+  const allQueue = await databaseService.getQueue();
   const start = (page - 1) * pageSize;
   const end = start + pageSize;
-  const paginatedQueue = syncQueue.slice(start, end);
+  const paginatedQueue = allQueue.slice(start, end);
   res.json({
     items: paginatedQueue,
-    total: syncQueue.length,
+    total: allQueue.length,
     page,
     pageSize
   });
 });
 
 // Add items to the sync queue
-router.post('/queue', (req, res) => {
+router.post('/queue', async (req, res) => {
   let items = req.body.items;
   if (!Array.isArray(items)) {
     return res.status(400).json({ error: 'Items must be an array.' });
   }
-  // Ensure each item has a 'key' property
-  items = items.map(item => ({ ...item, key: item.plexKey || item.key }));
-  syncQueue = syncQueue.concat(items);
-  res.json({ success: true, queue: syncQueue });
+  try {
+    await databaseService.addQueueItems(items);
+    const allQueue = await databaseService.getQueue();
+    res.json({ success: true, queue: allQueue });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add items to queue.' });
+  }
 });
 
 // Remove an item from the sync queue
-router.post('/remove', (req, res) => {
+router.post('/remove', async (req, res) => {
   const item = req.body.item;
   if (!item) return res.status(400).json({ error: 'Missing item.' });
-  syncQueue = syncQueue.filter(q => {
-    if (item.key) return q.key !== item.key && q.plexKey !== item.key;
-    if (item.plexKey) return q.key !== item.plexKey && q.plexKey !== item.plexKey;
-    if (item.path) return q.path !== item.path;
-    return true;
-  });
-  res.json({ success: true, queue: syncQueue });
+  try {
+    await databaseService.removeQueueItem(item);
+    const allQueue = await databaseService.getQueue();
+    res.json({ success: true, queue: allQueue });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to remove item from queue.' });
+  }
 });
 
 // Clear the sync queue
-router.post('/clear', (req, res) => {
-  syncQueue = [];
-  res.json({ success: true });
+router.post('/clear', async (req, res) => {
+  try {
+    await databaseService.clearQueue();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear queue.' });
+  }
 });
 
 // Pause/Resume sync
@@ -86,7 +92,7 @@ router.post('/start', async (req, res) => {
     const driveContents = await scanDrive(usbRoot);
     const result = await syncQueueToDrive(queue, driveContents, { usbRoot });
     await writeManifest(usbRoot, result.copied);
-    syncQueue = []; // Clear the queue after successful sync
+    await databaseService.clearQueue(); // Clear the persistent queue after successful sync
     res.json(result);
   } catch (err) {
     logger.error('Sync error: ' + formatError(err));

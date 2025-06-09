@@ -1,53 +1,26 @@
 <template>
-
-<div class="browse-content">
+  <div class="browse-content">
     <div v-if="!sectionSelected" class="no-section-msg">
       <p>Please select a {{ type === 'movie' ? 'Movies' : 'TV Shows' }} section in Plex Settings first.</p>
     </div>
     <div v-else>
-      <div class="browse-header">
-        <h2>Browse {{ type === 'movie' ? 'Movies' : 'TV Shows' }}</h2>
-        <div class="view-toggle">
-          <button class="view-toggle-btn" @click="showDropdown = !showDropdown">
-            <i class="fa fa-th-large"></i>
-            <span>{{ viewOptions.find(opt => opt.value === viewMode).label }}</span>
-            <i class="fa fa-caret-down"></i>
-          </button>
-          <div v-if="showDropdown" class="view-dropdown">
-            <div v-for="opt in viewOptions" :key="opt.value" class="view-option" @click="setViewMode(opt.value); showDropdown = false">
-              <i :class="opt.icon"></i> {{ opt.label }}
-            </div>
-          </div>
-        </div>
-        <div class="filters">
-          <div class="year-filter">
-            <input 
-              type="number" 
-              v-model="yearFilter" 
-              placeholder="Filter by year..."
-              class="year-input"
-            />
-            <button @click="onYearFilter" class="filter-year-btn">
-              <i class="fa fa-filter"></i>
-            </button>
-            <button v-if="yearFilter" @click="clearYearFilter" class="clear-year-btn">
-              <i class="fa fa-times"></i>
-            </button>
-          </div>
-        </div>
-        <div v-if="!yearFilter" class="alpha-pagination">
-          <button v-for="letter in alphaLetters" :key="letter" :class="['alpha-btn', { active: letter === activeLetter }]" @click="setAlpha(letter)">{{ letter }}</button>
-        </div>
-        <div class="search-container">
-          <input 
-            v-model="search" 
-            @input="onSearch" 
-            :placeholder="`Search ${type === 'movie' ? 'Movies' : 'TV Shows'}...`" 
-            class="search-bar" 
-          />
-        </div>
-      </div>
-
+      <LibraryHeader
+        :title="type === 'movie' ? 'Movies' : 'TV Shows'"
+        :viewMode="viewMode.value"
+        :viewOptions="viewOptions"
+        :yearFilter="yearFilter"
+        :alphaLetters="alphaLetters"
+        :activeLetter="activeLetter"
+        :search="search"
+        :currentPage="currentPage"
+        :totalPages="totalPages"
+        @update:viewMode="setViewMode"
+        @update:year="onYearFilter"
+        @update:alpha="setAlpha"
+        @update:search="onSearch"
+        @prevPage="prevPage"
+        @nextPage="nextPage"
+      />
       <div v-if="loading" class="loading">Loading...</div>
       <div v-else-if="items.length === 0" class="no-results">
         No {{ type === 'movie' ? 'movies' : 'TV shows' }} found.
@@ -86,6 +59,7 @@ import OverviewListView from './OverviewListView.vue'
 import TVTableView from './TVTableView.vue'
 import MovieTableView from './MovieTableView.vue'
 import MixedTableView from './MixedTableView.vue'
+import LibraryHeader from './LibraryHeader.vue'
 
 const props = defineProps({
   type: {
@@ -271,9 +245,13 @@ async function addToQueue(item) {
 
   try {
     await axios.post('/api/sync/queue', {
-      plexKey: item.key,
-      title: item.title,
-      type: props.type
+      items: [
+        {
+          plexKey: item.key,
+          title: item.title,
+          type: props.type
+        }
+      ]
     })
     queue.value.add(item.key)
     toast.success(`Added ${item.title} to sync queue`)
@@ -324,6 +302,10 @@ onUnmounted(() => {
     observer.value.disconnect()
   }
 })
+
+const totalPages = computed(() => 10) // TODO: Replace with real total pages logic
+function prevPage() { /* TODO: Implement prev page logic */ }
+function nextPage() { /* TODO: Implement next page logic */ }
 </script>
 
 <style scoped>

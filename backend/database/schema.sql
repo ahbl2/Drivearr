@@ -52,6 +52,19 @@ CREATE TABLE IF NOT EXISTS api_cache (
     UNIQUE(endpoint, params)
 );
 
+-- Sync Queue (persistent)
+CREATE TABLE IF NOT EXISTS sync_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plex_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'movie', 'show', or 'episode'
+    season INTEGER,
+    episode INTEGER,
+    path TEXT,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metadata JSON
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_media_items_type ON media_items(type);
 CREATE INDEX IF NOT EXISTS idx_media_items_sync_status ON media_items(sync_status);

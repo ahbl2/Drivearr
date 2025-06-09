@@ -5812,3 +5812,21 @@
 {"timestamp":"2025-06-08T18:07:28.448Z","level":"info","message":"Sync service initialized"}
 {"timestamp":"2025-06-08T18:14:22.313Z","level":"info","message":"Database initialized successfully"}
 {"timestamp":"2025-06-08T18:14:22.330Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-08T22:29:10.606Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-08T22:29:10.623Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-08T23:20:33.915Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-08T23:20:33.932Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-08T23:32:17.089Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-08T23:32:17.107Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-08T23:35:36.684Z","level":"error","message":"Sync error: TypeError [ERR_INVALID_ARG_TYPE]: The \"path\" argument must be of type string. Received undefined\n    at Object.basename (node:path:819:5)\n    at syncQueueToDrive (C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\services\\syncEngine.js:114:27)\n    at async C:\\Users\\ahbl2\\OneDrive - Northern Kentucky University\\Desktop\\Drivearr\\backend\\routes\\sync.js:87:20"}
+{"timestamp":"2025-06-08T23:48:05.933Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-08T23:48:05.957Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-08T23:49:21.104Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-08T23:49:21.121Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T00:06:58.474Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T00:08:07.543Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T00:08:07.557Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T00:08:54.042Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T00:08:54.059Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T00:19:32.393Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T00:19:32.409Z","level":"info","message":"Sync service initialized"}

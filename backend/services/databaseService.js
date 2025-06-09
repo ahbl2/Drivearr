@@ -140,6 +140,57 @@ class DatabaseService {
         return stmt.run();
     }
 
+    // Sync Queue Operations
+    async addQueueItems(items) {
+        const stmt = this.db.prepare(`
+            INSERT INTO sync_queue (plex_key, title, type, season, episode, path, metadata)
+            VALUES (@plex_key, @title, @type, @season, @episode, @path, @metadata)
+        `);
+        const insertMany = this.db.transaction((items) => {
+            for (const item of items) {
+                stmt.run({
+                    plex_key: item.plexKey || item.plex_key,
+                    title: item.title,
+                    type: item.type,
+                    season: item.season || null,
+                    episode: item.episode || null,
+                    path: item.path || null,
+                    metadata: item.metadata ? JSON.stringify(item.metadata) : null
+                });
+            }
+        });
+        insertMany(items);
+    }
+
+    async getQueue() {
+        const stmt = this.db.prepare('SELECT * FROM sync_queue ORDER BY added_at ASC');
+        return stmt.all();
+    }
+
+    async removeQueueItem(identifier) {
+        if (typeof identifier === 'object' && identifier !== null) {
+            if (identifier.id) {
+                const stmt = this.db.prepare('DELETE FROM sync_queue WHERE id = ?');
+                return stmt.run(identifier.id);
+            } else if (identifier.plexKey || identifier.plex_key) {
+                const stmt = this.db.prepare('DELETE FROM sync_queue WHERE plex_key = ?');
+                return stmt.run(identifier.plexKey || identifier.plex_key);
+            }
+        } else if (typeof identifier === 'number') {
+            const stmt = this.db.prepare('DELETE FROM sync_queue WHERE id = ?');
+            return stmt.run(identifier);
+        } else if (typeof identifier === 'string') {
+            const stmt = this.db.prepare('DELETE FROM sync_queue WHERE plex_key = ?');
+            return stmt.run(identifier);
+        }
+        throw new Error('Invalid identifier for removeQueueItem');
+    }
+
+    async clearQueue() {
+        const stmt = this.db.prepare('DELETE FROM sync_queue');
+        return stmt.run();
+    }
+
     // Close database connection
     close() {
         if (this.db) {

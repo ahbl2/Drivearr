@@ -1,6 +1,7 @@
 <template>
   <div class="sync-queue">
     <h3 class="queue-title">Sync Queue</h3>
+    <div v-if="driveCheckError" class="empty-msg" style="color:#f87171; font-weight:600;">{{ driveCheckError }}</div>
     <div v-if="loading" class="empty-msg">Loading sync queue...</div>
     <div v-else-if="error" class="empty-msg">{{ error }}</div>
     <div v-else-if="queue && queue.length === 0" class="empty-msg">No items in the sync queue.</div>
@@ -29,7 +30,7 @@
       </div>
     </div>
     <div class="queue-controls">
-      <button class="sync-btn" @click="startSync" :disabled="queue.length === 0 || syncing">
+      <button class="sync-btn" @click="startSync" :disabled="queue.length === 0 || syncing || !driveAttached">
         <i class="fa fa-play"></i> Start Sync
       </button>
       <button class="pause-btn" @click="togglePause" :disabled="!syncing">
@@ -67,6 +68,10 @@ const paused = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(20)
 const totalItems = ref(0)
+
+const driveAttached = ref(true)
+const driveCheckError = ref('')
+let driveCheckInterval = null
 
 const totalPages = computed(() => Math.ceil(totalItems.value / pageSize.value))
 
@@ -194,12 +199,31 @@ const nextPage = () => {
   }
 }
 
+async function checkDriveAttached() {
+  try {
+    const res = await axios.get('/api/usb/scanned')
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      driveAttached.value = true
+      driveCheckError.value = ''
+    } else {
+      driveAttached.value = false
+      driveCheckError.value = 'No drive detected or drive is empty. Please attach a drive to enable syncing.'
+    }
+  } catch (err) {
+    driveAttached.value = false
+    driveCheckError.value = 'No drive detected or drive is not accessible. Please attach a drive to enable syncing.'
+  }
+}
+
 onMounted(async () => {
   await fetchQueue()
+  await checkDriveAttached()
+  driveCheckInterval = setInterval(checkDriveAttached, 5000)
 })
 
 onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval)
+  if (driveCheckInterval) clearInterval(driveCheckInterval)
 })
 </script>
 
