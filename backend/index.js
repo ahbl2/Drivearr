@@ -2,6 +2,8 @@ const express = require('express');
 const path = require('path');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const http = require('http');
+const { Server } = require('socket.io');
 
 dotenv.config();
 
@@ -35,6 +37,10 @@ const syncService = require('./services/syncService');
 const { scanAndIndexMediaFolders, startWatchingMediaFolders } = require('./services/driveScanner');
 const { loadConfig } = require('./config/configManager');
 
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+app.set('io', io);
+
 databaseService.initialize()
   .then(() => syncService.initialize())
   .then(async () => {
@@ -51,13 +57,21 @@ databaseService.initialize()
       } else {
         console.log('No media folders configured for auto-scan.');
       }
+      // Start watching the sync drive if configured
+      if (config.SYNC_DRIVE_PATH) {
+        await startWatchingMediaFolders([config.SYNC_DRIVE_PATH]);
+        console.log(`[watcher] Watching sync drive for real-time changes: ${config.SYNC_DRIVE_PATH}`);
+      }
     } catch (err) {
       console.error('Auto-scan on startup failed:', err);
     }
-    app.listen(port, () => {
+    server.listen(port, () => {
       console.log(`Drivearr backend running at http://localhost:${port}`);
+      console.log('WebSocket server running.');
     });
   })
   .catch(err => {
     console.error('Failed to initialize services:', err);
   });
+
+module.exports = { io };

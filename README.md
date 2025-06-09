@@ -14,11 +14,12 @@
 - 🔍 Browse your Plex library with posters
 - ✅ Select full shows, seasons, or episodes
 - 🔄 Detect existing USB content and sync only what's missing
-- 💾 Saves sync history per drive with `.plex2drive.json`
+- 💾 Saves sync history per drive with `.drivearr-manifest.json`
 - 🧠 Smart matching of Plex content to USB structure
 - 📁 Respects Plex naming/folder conventions
 - 🖥️ Runs on Unraid or any Docker-capable system
 - 🌙 Built-in dark mode UI
+- 📊 Drive History & Profile Management: Track sync history and manage drive profiles
 
 ---
 
@@ -54,7 +55,7 @@ Open `http://<your-server-ip>:3000` in your browser.
 - `backend/` – Node.js Express API + Plex sync engine
 - `frontend/` – Vue 3 interface (served via Vite)
 - `config/config.json` – App settings (automatically created)
-- `.plex2drive.json` – USB-level sync manifest
+- `.drivearr-manifest.json` – USB-level sync manifest
 
 ---
 
@@ -95,6 +96,14 @@ Open `http://<your-server-ip>:3000` in your browser.
 - Plex is used for recent items and server info.
 - Toggle between Plex and local/online metadata views in the UI.
 - Plex is no longer the source of truth for file paths, but remains for activity and server data.
+
+---
+
+## Drive History & Profile Management
+- **Manifest File:** Each drive has a `.drivearr-manifest.json` file that tracks sync history and profile info.
+- **Drive History:** View a history of synced items, including timestamps, types, and status.
+- **Profile Management:** Assign and manage drive profiles with custom labels and names.
+- **UI Integration:** Access drive history and profile management from the Drive History page.
 
 ---
 

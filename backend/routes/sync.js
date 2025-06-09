@@ -114,7 +114,13 @@ router.post('/start', async (req, res) => {
   try {
     const driveContents = await scanDrive(usbRoot);
     const result = await syncQueueToDrive(queue, driveContents, { usbRoot });
-    await writeManifest(usbRoot, result.copied);
+    // Merge all results for manifest history
+    const allResults = [
+      ...result.copied.map(item => ({ ...item, status: 'success', error: null })),
+      ...result.skipped.map(item => ({ ...item, status: 'skipped', error: null })),
+      ...result.errors.map(e => ({ ...e.item, status: 'error', error: e.error }))
+    ];
+    await writeManifest(usbRoot, allResults);
     await databaseService.clearQueue(); // Clear the persistent queue after successful sync
     res.json(result);
   } catch (err) {

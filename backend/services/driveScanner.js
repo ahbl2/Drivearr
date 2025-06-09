@@ -4,6 +4,7 @@ const glob = require('glob');
 const databaseService = require('./databaseService');
 const crypto = require('crypto');
 const chokidar = require('chokidar');
+const { io } = require('../index');
 
 function parseMediaFilename(filename) {
   const tvRegex = /(.*?)[. _-]+S(\d{2})E(\d{2})/i;
@@ -131,6 +132,7 @@ async function startWatchingMediaFolders(folders) {
         };
         await databaseService.upsertLocalMedia(item);
         console.log(`[watcher] Added: ${file}`);
+        if (io) io.emit('drive-updated', { event: 'add', file: item });
       }
     })
     .on('change', async (file) => {
@@ -153,11 +155,13 @@ async function startWatchingMediaFolders(folders) {
         };
         await databaseService.upsertLocalMedia(item);
         console.log(`[watcher] Changed: ${file}`);
+        if (io) io.emit('drive-updated', { event: 'change', file: item });
       }
     })
     .on('unlink', async (file) => {
       await databaseService.removeLocalMediaByPath(file);
       console.log(`[watcher] Removed: ${file}`);
+      if (io) io.emit('drive-updated', { event: 'unlink', file });
     });
   console.log('[watcher] Watching media folders for real-time changes:', folders);
 }

@@ -1,7 +1,8 @@
 const path = require('path');
 const fs = require('fs-extra');
+const crypto = require('crypto');
 
-const MANIFEST_FILENAME = '.plex2drive.json';
+const MANIFEST_FILENAME = '.drivearr-manifest.json';
 
 async function readManifest(usbRoot) {
   const manifestPath = path.join(usbRoot, MANIFEST_FILENAME);
@@ -9,37 +10,59 @@ async function readManifest(usbRoot) {
     const data = await fs.readJson(manifestPath);
     return data;
   } catch {
-    return { synced: [], inProgress: [] };
+    return null;
   }
 }
 
-async function writeManifest(usbRoot, copiedItems) {
+async function writeManifest(usbRoot, syncResults) {
   const manifestPath = path.join(usbRoot, MANIFEST_FILENAME);
-  let currentManifest = await readManifest(usbRoot);
+  let manifest = await readManifest(usbRoot);
+  const now = new Date().toISOString();
 
-  for (const item of copiedItems) {
-    const exists = currentManifest.synced.find((e) =>
-      item.type === 'episode'
-        ? e.type === 'episode' &&
-          e.title === item.title &&
-          e.season === item.season &&
-          e.episode === item.episode
-        : e.type === 'movie' && e.title === item.title
-    );
+  // Generate a persistent driveId if missing
+  let driveId = manifest && manifest.driveId ? manifest.driveId : 'drive-' + crypto.randomBytes(8).toString('hex');
 
-    if (!exists) {
-      currentManifest.synced.push({
-        title: item.title,
-        type: item.type,
-        season: item.season,
-        episode: item.episode,
-        path: item.destPath,
-        syncedAt: new Date().toISOString()
-      });
-    }
+  // Use existing profile or default
+  let profile = manifest && manifest.profile ? manifest.profile : {
+    name: 'Default Drive Profile',
+    label: 'Drive ' + now.split('T')[0],
+    createdAt: now
+  };
+
+  // Merge history
+  let history = manifest && Array.isArray(manifest.history) ? manifest.history : [];
+  for (const item of syncResults) {
+    history.push({
+      timestamp: now,
+      type: item.type,
+      title: item.title,
+      source: item.source || 'local',
+      status: item.status || 'success',
+      error: item.error || null
+    });
   }
 
-  await fs.writeJson(manifestPath, currentManifest, { spaces: 2 });
+  // Prune history if needed (e.g., keep last 500)
+  if (history.length > 500) history = history.slice(-500);
+
+  // Set lastSync
+  const lastSync = {
+    timestamp: now,
+    status: syncResults.every(i => i.status === 'success') ? 'success' : 'partial'
+  };
+
+  const newManifest = {
+    driveId,
+    profile,
+    history,
+    lastSync
+  };
+
+  // Atomic write: write to temp, then rename
+  const tmpPath = manifestPath + '.tmp';
+  await fs.writeJson(tmpPath, newManifest, { spaces: 2 });
+  await fs.move(tmpPath, manifestPath, { overwrite: true });
+  console.log('Manifest file written to:', manifestPath);
 }
 
 async function markInProgress(usbRoot, item) {

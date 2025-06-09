@@ -97,6 +97,42 @@ router.get('/status', async (req, res) => {
   }
 })
 
+// Safe eject endpoint
+router.post('/eject', async (req, res) => {
+  try {
+    const config = await loadConfig()
+    const syncDrivePath = config && config.SYNC_DRIVE_PATH
+    if (!syncDrivePath) return res.status(400).json({ error: 'No sync drive configured.' })
+
+    let result = null
+    if (os.platform() === 'win32') {
+      // Windows: Use diskpart to remove the drive letter (basic, not production safe)
+      const driveLetter = syncDrivePath[0]
+      const script = `remove letter=${driveLetter}`
+      const { exec } = require('child_process')
+      exec(`echo select volume ${driveLetter} & echo ${script} | diskpart`, (err, stdout, stderr) => {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to eject drive', details: stderr })
+        }
+        res.json({ success: true, message: 'Drive ejected (Windows, basic).' })
+      })
+      return
+    } else {
+      // Linux/Unix: Use umount
+      const { exec } = require('child_process')
+      exec(`umount "${syncDrivePath}"`, (err, stdout, stderr) => {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to eject drive', details: stderr })
+        }
+        res.json({ success: true, message: 'Drive ejected (Linux/Unix).' })
+      })
+      return
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to eject drive.' })
+  }
+})
+
 function formatError(error) {
     return error && error.stack ? error.stack : String(error);
 }

@@ -57,6 +57,8 @@ router.get('/status', (req, res) => {
   let attached = false;
   let free = null;
   let total = null;
+  let percentUsed = null;
+  let healthWarning = null;
   try {
     const stat = fs.statSync(drivePath);
     attached = stat.isDirectory();
@@ -65,6 +67,12 @@ router.get('/status', (req, res) => {
         const info = disk.checkSync(drivePath);
         free = info.free;
         total = info.total;
+        if (typeof free === 'number' && typeof total === 'number' && total > 0) {
+          percentUsed = Math.round(((total - free) / total) * 100);
+          if (free / total < 0.05) {
+            healthWarning = 'Low free space!';
+          }
+        }
       } catch (diskErr) {
         free = null;
         total = null;
@@ -73,7 +81,7 @@ router.get('/status', (req, res) => {
   } catch {
     attached = false;
   }
-  res.json({ attached, drivePath, free, total });
+  res.json({ attached, drivePath, free, total, percentUsed, healthWarning });
 });
 
 // POST /api/drive/rescan - manual rescan

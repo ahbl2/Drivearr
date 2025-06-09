@@ -1,11 +1,11 @@
 <template>
   <div>
     <h2>Drive History</h2>
-    <div v-if="driveInfo">
+    <div v-if="driveInfo && driveInfo.profile">
       <h3>Drive Info</h3>
-      <p>Label: {{ driveInfo.profile_label }}</p>
-      <p>ID: {{ driveInfo.drive_id }}</p>
-      <p>Last Sync: {{ driveInfo.last_sync || 'N/A' }}</p>
+      <p>Label: {{ driveInfo.profile.label }}</p>
+      <p>ID: {{ driveInfo.driveId }}</p>
+      <p>Last Sync: {{ driveInfo.lastSync ? driveInfo.lastSync.timestamp : 'N/A' }}</p>
       <form @submit.prevent="handleAssignProfile" style="margin-top: 10px">
         <label>
           Profile Name:
@@ -65,22 +65,14 @@ const fetchDriveData = async () => {
   error.value = null
   successMsg.value = null
   try {
-    const profilesRes = await axios.get('/api/drives/profiles')
-    if (profilesRes.data && profilesRes.data.length > 0) {
-      driveInfo.value = profilesRes.data[0]
-      profileName.value = profilesRes.data[0].profile_name
-      profileLabel.value = profilesRes.data[0].profile_label
+    const manifestRes = await axios.get('/api/drives/manifest')
+    if (manifestRes.data) {
+      driveInfo.value = manifestRes.data
+      profileName.value = manifestRes.data.profile.name
+      profileLabel.value = manifestRes.data.profile.label
+      history.value = manifestRes.data.history || []
     } else {
       driveInfo.value = null
-    }
-    const historyRes = await axios.get('/api/drives/history/drive-123') // Replace with actual drive ID
-    if (historyRes.data && historyRes.data.error) {
-      error.value = historyRes.data.error
-      history.value = []
-    } else if (Array.isArray(historyRes.data)) {
-      history.value = historyRes.data
-    } else {
-      console.log('Drive history API response:', historyRes.data)
       history.value = []
     }
   } catch (err) {
@@ -101,7 +93,7 @@ const handleAssignProfile = async () => {
       return
     }
     await axios.post('/api/drives/assign-profile', {
-      driveId: driveInfo.value.drive_id,
+      driveId: driveInfo.value.driveId,
       profileName: profileName.value,
       profileLabel: profileLabel.value,
     })
@@ -123,7 +115,7 @@ const handleDeleteProfile = async () => {
   }
   if (!window.confirm('Are you sure you want to delete this drive profile and all its history? This cannot be undone.')) return
   try {
-    await axios.delete(`/api/drives/profile/${driveInfo.value.drive_id}`)
+    await axios.delete(`/api/drives/profile/${driveInfo.value.driveId}`)
     successMsg.value = 'Drive profile and history deleted.'
     driveInfo.value = null
     history.value = []

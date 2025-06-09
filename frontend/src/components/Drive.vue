@@ -5,8 +5,11 @@
       <button class="rescan-btn" @click="manualRescan" :disabled="rescanning">
         <i class="fa fa-sync"></i> Rescan Drive
       </button>
-      <template v-if="loadingStatus">
-        <span class="spinner"></span> Loading drive status...
+      <button class="eject-btn" @click="safeEject" :disabled="ejecting || !driveStatus.attached" style="margin-left: 1rem;">
+        <i class="fa fa-eject"></i> {{ ejecting ? 'Ejecting...' : 'Safe Eject' }}
+      </button>
+      <template v-if="loadingStatus || updating">
+        <span class="spinner"></span> Updating drive status...
       </template>
       <template v-else-if="statusError">
         <span class="error">{{ statusError }}</span>
@@ -15,7 +18,16 @@
         <span v-if="!driveStatus.attached" class="error">No drive attached. Please attach a drive.</span>
         <span v-else>
           <b>Drive:</b> {{ driveStatus.drivePath }}<br />
-          <b>Free Space:</b> {{ formatBytes(driveStatus.free) }} / <b>Total:</b> {{ formatBytes(driveStatus.total) }}
+          <b>Free Space:</b> {{ formatBytes(driveStatus.free) }} / <b>Total:</b> {{ formatBytes(driveStatus.total) }}<br />
+          <div v-if="driveStatus.percentUsed !== null" class="space-bar-wrapper">
+            <div class="space-bar">
+              <div class="space-bar-used" :style="{ width: driveStatus.percentUsed + '%' }"></div>
+            </div>
+            <span>{{ driveStatus.percentUsed }}% used</span>
+          </div>
+          <div v-if="driveStatus.healthWarning" class="health-warning">
+            <i class="fa fa-exclamation-triangle"></i> {{ driveStatus.healthWarning }}
+          </div>
         </span>
       </template>
     </div>
@@ -88,20 +100,29 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
+import { io as socketIOClient } from 'socket.io-client'
 
 const toast = useToast()
+
 const driveStatus = ref({})
 const loadingStatus = ref(true)
 const statusError = ref('')
-
-const movies = ref([])
-const tvShows = ref([])
 const loadingContents = ref(true)
 const contentsError = ref('')
 const rescanning = ref(false)
+const ejecting = ref(false)
+const updating = ref(false) // For visual feedback
+let updateTimeout = null
+let socket = null
+let updateQueue = []
+let debounceTimer = null
+const DEBOUNCE_MS = 800
+
+const movies = ref([])
+const tvShows = ref([])
 
 const selectedMovies = ref([])
 const selectedShows = ref([])
@@ -272,9 +293,74 @@ async function bulkSyncMissing() {
   else toast.error('No missing content was added.')
 }
 
+async function safeEject() {
+  if (!driveStatus.value.attached) return
+  ejecting.value = true
+  try {
+    const res = await axios.post('/api/usb/eject')
+    toast.success(res.data.message || 'Drive ejected successfully!')
+    await fetchDriveStatus()
+  } catch (err) {
+    toast.error(err.response?.data?.error || 'Failed to eject drive.')
+  } finally {
+    ejecting.value = false
+  }
+}
+
+function showDetailedToast(data) {
+  let msg = ''
+  if (data.event === 'add') msg = `File added: ${data.file?.title || data.file?.path || 'Unknown'}`
+  else if (data.event === 'change') msg = `File updated: ${data.file?.title || data.file?.path || 'Unknown'}`
+  else if (data.event === 'unlink') msg = `File removed: ${data.file?.title || data.file || 'Unknown'}`
+  else msg = 'Drive updated.'
+  toast.info(msg)
+}
+
+function handleDriveUpdate(data) {
+  updateQueue.push(data)
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(async () => {
+    updating.value = true
+    await fetchDriveStatus()
+    await fetchDriveContents()
+    // Show a grouped notification if multiple events
+    if (updateQueue.length === 1) {
+      showDetailedToast(updateQueue[0])
+    } else {
+      const adds = updateQueue.filter(e => e.event === 'add').length
+      const changes = updateQueue.filter(e => e.event === 'change').length
+      const unlinks = updateQueue.filter(e => e.event === 'unlink').length
+      let msg = 'Drive updated:'
+      if (adds) msg += ` ${adds} added;`
+      if (changes) msg += ` ${changes} updated;`
+      if (unlinks) msg += ` ${unlinks} removed;`
+      toast.info(msg)
+    }
+    updateQueue = []
+    updating.value = false
+  }, DEBOUNCE_MS)
+}
+
 onMounted(() => {
   fetchDriveStatus()
   fetchDriveContents()
+  // Real-time updates
+  socket = socketIOClient('http://localhost:3000')
+  socket.on('drive-updated', handleDriveUpdate)
+  socket.on('connect_error', () => {
+    toast.error('Lost connection to drive update server.')
+  })
+  socket.on('disconnect', () => {
+    toast.error('Disconnected from drive update server.')
+  })
+})
+
+onUnmounted(() => {
+  if (socket) {
+    socket.disconnect()
+    socket = null
+  }
+  if (debounceTimer) clearTimeout(debounceTimer)
 })
 </script>
 
@@ -453,5 +539,51 @@ onMounted(() => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+.eject-btn {
+  background: #eab308;
+  color: #23293a;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1.3rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-left: 1rem;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.eject-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.space-bar-wrapper {
+  margin: 0.5rem 0 0.2rem 0;
+  width: 220px;
+}
+.space-bar {
+  width: 100%;
+  height: 14px;
+  background: #23293a;
+  border-radius: 7px;
+  overflow: hidden;
+  margin-bottom: 0.2rem;
+  border: 1px solid #334155;
+}
+.space-bar-used {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 7px 0 0 7px;
+  transition: width 0.3s;
+}
+.health-warning {
+  color: #eab308;
+  font-weight: 600;
+  margin-top: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 </style> 

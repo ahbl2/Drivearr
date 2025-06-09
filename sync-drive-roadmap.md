@@ -37,36 +37,36 @@ Key capabilities:
 - [x] Drive page: Delete button for movie/show
 - [x] Drive page: Manual rescan button
 - [x] Drive page: Bulk actions (optional)
-- [ ] Drive page: Sync history/log (optional)
-- [ ] Drive page: Drive health/space info
-- [ ] Drive page: Safe eject button (optional)
+- [x] Drive page: Sync history/log (optional)
+- [x] Drive page: Drive health/space info
+- [x] Drive page: Safe eject button (optional)
 
 ### Live/Auto Scanning
-- [ ] Implement live scanning for drive
-- [ ] Real-time UI updates
+- [x] Implement live scanning for drive
+- [x] Real-time UI updates
 
 ### Polish & UX
-- [ ] Error handling for drive issues
-- [ ] UI/UX polish and user feedback
+- [x] Error handling for drive issues
+- [x] UI/UX polish and user feedback
 - [ ] Documentation update
 
 ---
 
 ## Drive History & Profile Management
-- [ ] **Manifest File Structure**
-  - [ ] Define manifest file structure (e.g., `.drivearr-manifest.json`) to include:
+- [x] **Manifest File Structure**
+  - [x] Define manifest file structure (e.g., `.drivearr-manifest.json`) to include:
     - Drive unique ID (generated and persisted)
     - Drive profile info (name, user label, creation date, etc.)
     - History of synced items (with timestamps, types, source info, etc.)
     - Optionally, last sync status and errors
-- [ ] **Update Sync Logic to Write Manifest**
-  - [ ] Locate the sync logic where files are copied to the drive
-  - [ ] Add logic to write or update the manifest file after each sync
-  - [ ] Ensure robust, atomic writing of the manifest file
-- [ ] **Integrate Manifest Reading into Drive Connection Logic**
-  - [ ] Read manifest file when a drive is connected
-  - [ ] Log manifest details for debugging and user feedback
-- [ ] **Store Drive Profiles and History in Local Database**
+- [x] **Update Sync Logic to Write Manifest**
+  - [x] Locate the sync logic where files are copied to the drive
+  - [x] Add logic to write or update the manifest file after each sync
+  - [x] Ensure robust, atomic writing of the manifest file
+- [x] **Integrate Manifest Reading into Drive Connection Logic**
+  - [x] Read manifest file when a drive is connected
+  - [x] Log manifest details for debugging and user feedback
+- [x] **Store Drive Profiles and History in Local Database**
   - [x] Implement logic to store drive profiles and history in the local database
   - [x] Ensure robust error handling and logging
 
@@ -75,29 +75,29 @@ Key capabilities:
 ## Drive History & Profile Management (Next Major Focus)
 
 ### Backend
-- [ ] Write a manifest/history file to the drive after each sync
-- [ ] Read manifest/history file when drive is connected
-- [ ] Store drive profiles/history in local database
-- [ ] API: Get drive sync history (by drive)
-- [ ] API: List all known drives/profiles
-- [ ] API: Manually assign a drive to a known profile
-- [ ] API: Delete a drive profile/history
+- [x] Write a manifest/history file to the drive after each sync
+- [x] Read manifest/history file when drive is connected
+- [x] Store drive profiles/history in local database
+- [x] API: Get drive sync history (by drive)
+- [x] API: List all known drives/profiles
+- [x] API: Manually assign a drive to a known profile
+- [x] API: Delete a drive profile/history
 
 ### Frontend
-- [ ] Sidebar: Add "Drive History" under Drive
-- [ ] Drive History page: List/table of synced movies and TV shows for the current drive
-- [ ] Drive History page: Filter/search by title, type, date
-- [ ] Drive History page: Show drive info (label, ID, last sync, etc.)
-- [ ] Drive History page: Manual profile selection if drive not auto-detected
-- [ ] Drive History page: Delete drive profile/history
-- [ ] UI polish and feedback
+- [x] Sidebar: Add "Drive History" under Drive
+- [x] Drive History page: List/table of synced movies and TV shows for the current drive
+- [x] Drive History page: Filter/search by title, type, date
+- [x] Drive History page: Show drive info (label, ID, last sync, etc.)
+- [x] Drive History page: Manual profile selection if drive not auto-detected
+- [x] Drive History page: Delete drive profile/history
+- [x] UI polish and feedback
 
 ### Polish & UX
-- [ ] Error handling for missing/corrupt manifest/history files
-- [ ] User feedback for drive recognition and profile management
+- [x] Error handling for missing/corrupt manifest/history files
+- [x] User feedback for drive recognition and profile management
 
 ---
 
 **Note:**
 - Delete buttons for movies/shows and the manual rescan button are now available in the Drive page UI.
-- Next major focus: Drive sync history/log, drive profile management, and Drive History page. 
+- Next major focus: Documentation update and further frontend enhancements or backend features as needed. 
