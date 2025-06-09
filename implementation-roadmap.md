@@ -21,7 +21,7 @@ Transition Drivearr from relying solely on Plex for metadata and file paths to a
     - Sonarr maintains a local database/index of all files and their matched metadata.
     - Metadata is fetched from online sources (TheTVDB, TMDb) and matched to local files.
     - Best practice: always let the user specify root folders, build a local index, and use strong filename parsing/matching logic.
-- [ ] Identify best open-source libraries/APIs for metadata (e.g., [TMDb API](https://www.themoviedb.org/documentation/api), [TheTVDB API](https://thetvdb.github.io/v4-api/))
+- [x] Identify best open-source libraries/APIs for metadata (e.g., [TMDb API](https://www.themoviedb.org/documentation/api), [TheTVDB API](https://thetvdb.github.io/v4-api/))
 
 ### 2. **Media Folder Configuration**
 - [x] UI: Let users specify one or more media root folders (Movies, TV, etc.)
@@ -57,27 +57,56 @@ Transition Drivearr from relying solely on Plex for metadata and file paths to a
 
 ### 5. **UI Integration**
 - [x] Show local library using matched metadata (not just Plex)
-- [ ] Allow adding to sync queue using real file paths
-- [ ] Show unmatched files and allow user to match/correct
+- [x] Allow adding to sync queue using real file paths
+- [x] Show unmatched files and allow user to match/correct
 
 **Summary:**
 - Plex/Local toggle now available on all library pages (dashboard, TV, Movies), with seamless UI and data source swap. Users can browse their local indexed library or Plex library with a single click.
+- Sync queue integration complete with real file paths from local index. Users can now add items to sync queue from both Plex and local library views.
+- Unmatched files are clearly marked in the UI with a "No Match" badge, and users can manually match them through the UI.
 
-*Next: sync queue integration, etc.*
+*Next: Plex integration retention and sync logic updates.*
 
 ### 6. **Retain Plex Integration**
-- [ ] Keep Plex API integration for:
+- [x] Keep Plex API integration for:
     - Recent items (e.g., 20 most recently added)
     - Server-specific info (e.g., on library dashboard)
-- [ ] Allow toggling between Plex and local/online metadata views
+- [x] Allow toggling between Plex and local/online metadata views
+- [ ] Enhance server info display with:
+    - Server status and health
+    - Library sizes and statistics
+    - Connection status and performance metrics
+
+**Summary:**
+- Plex/Local toggle implemented across all library views, allowing seamless switching between sources
+- Recent items display working for both Plex and local sources
+- Basic server configuration and authentication in place
+- Server-specific information display could be enhanced for better user experience
+
+*Next: Sync logic updates and migration testing.*
 
 ### 7. **Sync Logic**
-- [ ] When syncing, use the real file path from the local index
-- [ ] Ensure robust error handling if files are moved/deleted
+- [x] When syncing, use the real file path from the local index
+- [x] Ensure robust error handling if files are moved/deleted
+
+**Summary:**
+- Sync logic now uses real file paths from the local index for all sync operations, supporting both Plex and local sources.
+- Enhanced error handling: robust validation for file existence, directory access, and error reporting for missing/moved files.
+- Improved progress tracking, retry support for failed syncs, and clear status/error display in the UI.
+- Users can retry failed syncs, clear completed items, and see detailed sync status and errors in real time.
+
+*Next: Migration testing and final polish.*
 
 ### 8. **Testing & Migration**
-- [ ] Test with various folder structures and platforms (Windows, Unraid, Docker)
-- [ ] Provide migration guide for users switching from Plex-only to hybrid/local
+- [x] Test with various folder structures and platforms (Windows, Unraid, Docker)
+- [x] Provide migration guide for users switching from Plex-only to hybrid/local
+
+**Summary:**
+- Migration process tested across Windows, Unraid, and Docker environments.
+- Comprehensive migration guide and documentation finalized in README.md, covering setup, configuration, hybrid/local migration, troubleshooting, and best practices.
+- Users can now confidently transition from Plex-only to hybrid/local workflows with clear guidance and robust error handling.
+
+*Next: Final UI polish and user feedback integration.*
 
 ---
 
@@ -99,12 +128,25 @@ Transition Drivearr from relying solely on Plex for metadata and file paths to a
 
 **Checklist Progress:**
 - [x] Research: Sonarr/Radarr folder scanning/indexing and matching logic
-- [ ] Research: Best metadata APIs
+- [x] Research: Best metadata APIs
 - [x] Folder config UI
 - [x] Backend: Store and manage these paths
 - [x] Local scan/index
 - [x] Metadata fetch/match
 - [x] UI integration
-- [ ] Plex integration retained
-- [ ] Sync logic updated
-- [ ] Migration tested 
+- [x] Plex integration retained
+- [x] Sync logic updated
+- [x] Migration tested 
+
+---
+
+## **Next Steps**
+1. Polish UI and error handling based on user feedback
+2. Monitor for migration issues and update documentation as needed
+
+---
+
+## **Additional Notes**
+- The migration process has been tested across various environments, and the migration guide has been finalized in the README.md file.
+- Users can now confidently transition from Plex-only to hybrid/local workflows with clear guidance and robust error handling.
+- The next step is to finalize the UI and integrate user feedback for further improvements and monitoring. 

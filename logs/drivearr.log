@@ -5849,3 +5849,11 @@
 {"timestamp":"2025-06-09T02:13:17.561Z","level":"info","message":"Sync service initialized"}
 {"timestamp":"2025-06-09T04:39:01.057Z","level":"info","message":"Database initialized successfully"}
 {"timestamp":"2025-06-09T04:39:01.075Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T05:00:40.837Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T05:00:40.854Z","level":"info","message":"Sync service initialized"}
+{"timestamp":"2025-06-09T05:01:21.217Z","level":"error","message":"Error processing The Woman in the Yard: No file path available for sync item"}
+{"timestamp":"2025-06-09T05:01:21.221Z","level":"error","message":"Sync error: Error: ENOENT: no such file or directory, open 'C:\\usbdrives\\FriendsDrive\\.plex2drive.json'"}
+{"timestamp":"2025-06-09T05:01:30.719Z","level":"error","message":"Error processing The Woman in the Yard: No file path available for sync item"}
+{"timestamp":"2025-06-09T05:01:30.720Z","level":"error","message":"Sync error: Error: ENOENT: no such file or directory, open 'C:\\usbdrives\\FriendsDrive\\.plex2drive.json'"}
+{"timestamp":"2025-06-09T05:06:35.093Z","level":"info","message":"Database initialized successfully"}
+{"timestamp":"2025-06-09T05:06:35.111Z","level":"info","message":"Sync service initialized"}

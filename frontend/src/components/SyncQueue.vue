@@ -3,6 +3,20 @@
     <h3 class="queue-title">Sync Queue</h3>
     <div v-if="driveStatusMsg" :class="['drive-status-msg', driveAttached ? 'attached' : 'detached']">{{ driveStatusMsg }}</div>
     <div v-if="driveCheckError" class="empty-msg" style="color:#f87171; font-weight:600;">{{ driveCheckError }}</div>
+    
+    <!-- Overall Progress -->
+    <div v-if="syncing" class="overall-progress">
+      <div class="overall-progress-bar">
+        <div class="progress-bar-inner" :style="{ width: overallProgress + '%' }"></div>
+        <span class="progress-label">{{ overallProgress }}%</span>
+      </div>
+      <div class="progress-stats">
+        <span>Total: {{ syncStatus.total }}</span>
+        <span>Completed: {{ syncStatus.completed }}</span>
+        <span>Remaining: {{ syncStatus.total - syncStatus.completed }}</span>
+      </div>
+    </div>
+
     <div v-if="loading" class="empty-msg">Loading sync queue...</div>
     <div v-else-if="error" class="empty-msg">{{ error }}</div>
     <div v-else-if="queue && queue.length === 0" class="empty-msg">No items in the sync queue.</div>
@@ -11,11 +25,13 @@
         v-for="item in queue"
         :key="item.key || item.path"
         class="queue-card"
+        :class="{ 'has-error': getItemError(item) }"
       >
         <div class="queue-info">
           <div class="queue-title-row">
             <span class="media-title">{{ item.title }}</span>
             <span v-if="item.season" class="media-ep">S{{ item.season }}E{{ item.episode }}</span>
+            <span v-if="item.type" class="media-type">{{ item.type }}</span>
           </div>
           <div class="status-tag" :class="statusMap[itemStatus(item).status] || 'pending'">
             {{ statusText(itemStatus(item).status) }}
@@ -24,27 +40,75 @@
             <div class="progress-bar-inner" :style="{ width: itemStatus(item).progress + '%' }"></div>
             <span class="progress-label">{{ itemStatus(item).progress }}%</span>
           </div>
+          <div v-if="getItemError(item)" class="item-error-msg">
+            <i class="fa fa-exclamation-triangle"></i>
+            <span>{{ getItemError(item) }}</span>
+            <button v-if="canRetry(item)" class="retry-btn" @click="retryItem(item)">
+              <i class="fa fa-redo"></i> Retry
+            </button>
+          </div>
+          <div v-if="itemStatus(item).status === 'done'" class="item-success-msg">
+            <i class="fa fa-check-circle"></i>
+            <span>Successfully synced</span>
+          </div>
         </div>
-        <button class="remove-btn" @click="remove(item)" title="Remove from queue">
-          <i class="fa fa-times"></i>
-        </button>
+        <div class="queue-actions">
+          <button 
+            v-if="canRetry(item)" 
+            class="retry-btn" 
+            @click="retryItem(item)"
+            title="Retry sync"
+          >
+            <i class="fa fa-redo"></i>
+          </button>
+          <button 
+            class="remove-btn" 
+            @click="remove(item)" 
+            title="Remove from queue"
+            :disabled="itemStatus(item).status === 'syncing'"
+          >
+            <i class="fa fa-times"></i>
+          </button>
+        </div>
       </div>
     </div>
     <div class="queue-controls">
-      <button class="sync-btn" @click="startSync" :disabled="queue.length === 0 || syncing || !driveAttached">
+      <button 
+        class="sync-btn" 
+        @click="startSync" 
+        :disabled="queue.length === 0 || syncing || !driveAttached"
+      >
         <i class="fa fa-play"></i> Start Sync
       </button>
-      <button class="pause-btn" @click="togglePause" :disabled="!syncing">
-        <i :class="paused ? 'fa fa-play' : 'fa fa-pause'"></i> {{ paused ? 'Resume' : 'Pause' }}
+      <button 
+        class="pause-btn" 
+        @click="togglePause" 
+        :disabled="!syncing"
+      >
+        <i :class="paused ? 'fa fa-play' : 'fa fa-pause'"></i> 
+        {{ paused ? 'Resume' : 'Pause' }}
       </button>
-      <button class="clear-completed-btn" @click="clearCompleted" :disabled="!hasCompletedItems">
+      <button 
+        class="clear-completed-btn" 
+        @click="clearCompleted" 
+        :disabled="!hasCompletedItems"
+      >
         <i class="fa fa-trash"></i> Clear Completed
       </button>
     </div>
     <div v-if="syncResult" class="sync-result">
-      <p>✅ Copied: {{ syncResult.copied.length }}</p>
-      <p>⏩ Skipped: {{ syncResult.skipped.length }}</p>
-      <p>❌ Errors: {{ syncResult.errors.length }}</p>
+      <div class="result-item success">
+        <i class="fa fa-check-circle"></i>
+        <span>Copied: {{ syncResult.copied.length }}</span>
+      </div>
+      <div class="result-item skipped">
+        <i class="fa fa-forward"></i>
+        <span>Skipped: {{ syncResult.skipped.length }}</span>
+      </div>
+      <div class="result-item error">
+        <i class="fa fa-exclamation-circle"></i>
+        <span>Errors: {{ syncResult.errors.length }}</span>
+      </div>
     </div>
     <div class="pagination">
       <button @click="prevPage" :disabled="currentPage === 1">Previous</button>
@@ -57,7 +121,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
+import { useToast } from 'vue-toastification'
 
+const toast = useToast()
 const queue = ref([])
 const loading = ref(true)
 const error = ref(null)
@@ -102,12 +168,30 @@ function statusText(status) {
   }
 }
 
+function canRetry(item) {
+  const status = itemStatus(item)
+  return status.status === 'error' || (status.status === 'skipped' && getItemError(item))
+}
+
+async function retryItem(item) {
+  try {
+    await axios.post('/api/sync/retry', { item })
+    await fetchQueue()
+    toast.success(`Retrying sync for ${item.title}`)
+  } catch (err) {
+    toast.error('Failed to retry sync')
+    console.error('Error retrying sync:', err)
+  }
+}
+
 const remove = async (item) => {
   try {
     await axios.post('/api/sync/remove', { item })
     await fetchQueue()
+    toast.success(`Removed ${item.title} from queue`)
   } catch (err) {
-    alert('Failed to remove item from queue')
+    toast.error('Failed to remove item from queue')
+    console.error('Error removing item:', err)
   }
 }
 
@@ -128,13 +212,23 @@ const pollSyncStatus = async () => {
     syncStatus.value = res.data
     if (!res.data.active && syncing.value) {
       syncing.value = false
+      if (res.data.items.some(i => i.status === 'error')) {
+        toast.error('Some items failed to sync. Check the queue for details.')
+      } else {
+        toast.success('Sync completed successfully')
+      }
     }
   } catch (err) {
-    // ignore polling errors
+    console.error('Error polling sync status:', err)
   }
 }
 
 const startSync = async () => {
+  if (!driveAttached.value) {
+    toast.error('No drive detected. Please attach a drive to enable syncing.')
+    return
+  }
+
   syncing.value = true
   syncResult.value = null
   syncStatus.value = { active: true, total: queue.value.length, completed: 0, items: [] }
@@ -145,8 +239,8 @@ const startSync = async () => {
     syncResult.value = res.data
     await pollSyncStatus()
   } catch (err) {
-    alert('Sync failed: ' + (err.response?.data?.error || err.message))
-    console.error(err)
+    toast.error('Sync failed: ' + (err.response?.data?.error || err.message))
+    console.error('Sync error:', err)
   } finally {
     syncing.value = false
     clearInterval(pollInterval)
@@ -158,8 +252,10 @@ const togglePause = async () => {
   try {
     const res = await axios.post('/api/sync/pause', { paused: !paused.value })
     paused.value = res.data.paused
+    toast.info(paused.value ? 'Sync paused' : 'Sync resumed')
   } catch (err) {
-    alert('Failed to toggle pause state')
+    toast.error('Failed to toggle pause state')
+    console.error('Error toggling pause:', err)
   }
 }
 
@@ -167,8 +263,10 @@ const clearCompleted = async () => {
   try {
     await axios.post('/api/sync/clear-completed')
     await fetchQueue()
+    toast.success('Cleared completed items')
   } catch (err) {
-    alert('Failed to clear completed items')
+    toast.error('Failed to clear completed items')
+    console.error('Error clearing completed items:', err)
   }
 }
 
@@ -182,6 +280,8 @@ const fetchQueue = async () => {
     totalItems.value = res.data.total
   } catch (err) {
     error.value = 'Failed to load sync queue.'
+    toast.error('Failed to load sync queue')
+    console.error('Error fetching queue:', err)
     queue.value = []
   } finally {
     loading.value = false
@@ -214,11 +314,12 @@ async function checkDriveStatus() {
       driveStatusMsg.value = ''
       driveCheckError.value = 'No drive detected or drive is empty. Please attach a drive to enable syncing.'
     }
-  } catch {
+  } catch (err) {
     driveAttached.value = false
     currentDrive.value = ''
     driveStatusMsg.value = ''
-    driveCheckError.value = 'No drive detected or drive is empty. Please attach a drive to enable syncing.'
+    driveCheckError.value = 'Failed to check drive status. Please try again.'
+    console.error('Error checking drive status:', err)
   }
 }
 
@@ -232,6 +333,16 @@ onUnmounted(() => {
   if (pollInterval) clearInterval(pollInterval)
   if (driveCheckInterval) clearInterval(driveCheckInterval)
 })
+
+function getItemError(item) {
+  const status = itemStatus(item)
+  if (status.status === 'error' && status.error) return status.error
+  if (syncResult.value && Array.isArray(syncResult.value.errors)) {
+    const found = syncResult.value.errors.find(e => (e.item.key || e.item.path) === (item.key || item.path))
+    if (found) return found.error
+  }
+  return null
+}
 </script>
 
 <style scoped>
@@ -240,6 +351,7 @@ onUnmounted(() => {
   width: 100%;
   box-sizing: border-box;
 }
+
 .queue-title {
   color: #bfc7d5;
   font-size: 1.2rem;
@@ -247,27 +359,35 @@ onUnmounted(() => {
   margin-bottom: 1.5rem;
   letter-spacing: 1px;
 }
+
 .empty-msg {
   color: #7c8493;
   text-align: center;
   margin-bottom: 2rem;
 }
+
+.overall-progress {
+  margin-bottom: 2rem;
+}
+
 .overall-progress-bar {
   width: 100%;
   height: 18px;
   background: #23293a;
   border-radius: 8px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.10);
 }
+
 .progress-bar-inner {
   height: 100%;
   background: #3b82f6;
   border-radius: 8px;
   transition: width 0.3s;
 }
+
 .progress-label {
   position: absolute;
   right: 12px;
@@ -277,12 +397,21 @@ onUnmounted(() => {
   font-weight: 500;
   line-height: 18px;
 }
+
+.progress-stats {
+  display: flex;
+  justify-content: space-between;
+  color: #7c8493;
+  font-size: 0.9rem;
+}
+
 .queue-list {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
   margin-bottom: 2rem;
 }
+
 .queue-card {
   background: #23293a;
   border-radius: 12px;
@@ -296,36 +425,51 @@ onUnmounted(() => {
   min-width: 0;
   word-break: break-word;
 }
-@media (max-width: 900px) {
-  .queue-card {
-    padding: 0.7rem 0.5rem;
-  }
+
+.queue-card.has-error {
+  border-left: 4px solid #f87171;
 }
+
 .queue-card:hover {
   box-shadow: 0 6px 18px rgba(0,0,0,0.18);
   transform: translateY(-2px) scale(1.01);
 }
+
 .queue-info {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   flex: 1;
 }
+
 .queue-title-row {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
+
 .media-title {
   color: #fff;
   font-size: 1.1rem;
   font-weight: 500;
 }
+
 .media-ep {
   color: #7c8493;
   font-size: 0.98rem;
   font-weight: 400;
 }
+
+.media-type {
+  color: #7c8493;
+  font-size: 0.9rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  background: #334155;
+  border-radius: 4px;
+}
+
 .status-tag {
   width: fit-content;
   min-width: 110px;
@@ -338,30 +482,37 @@ onUnmounted(() => {
   letter-spacing: 0.5px;
   display: inline-block;
 }
+
 .status-tag.ready {
   background: #2563eb;
   color: #fff;
 }
+
 .status-tag.syncing {
   background: #3b82f6;
   color: #fff;
 }
+
 .status-tag.done {
   background: #34d399;
   color: #fff;
 }
+
 .status-tag.error {
   background: #f87171;
   color: #fff;
 }
+
 .status-tag.skipped {
   background: #fbbf24;
   color: #23293a;
 }
+
 .status-tag.pending {
   background: #64748b;
   color: #fff;
 }
+
 .item-progress-bar {
   width: 100%;
   height: 10px;
@@ -371,12 +522,14 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
 }
+
 .item-progress-bar .progress-bar-inner {
   height: 100%;
   background: #3b82f6;
   border-radius: 6px;
   transition: width 0.3s;
 }
+
 .item-progress-bar .progress-label {
   position: absolute;
   right: 8px;
@@ -386,7 +539,14 @@ onUnmounted(() => {
   font-weight: 500;
   line-height: 10px;
 }
-.remove-btn {
+
+.queue-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+
+.remove-btn, .retry-btn {
   background: #f87171;
   color: #fff;
   border: none;
@@ -399,80 +559,174 @@ onUnmounted(() => {
   font-size: 1.2rem;
   cursor: pointer;
   transition: background 0.2s;
-  margin-left: 1.5rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
+
+.retry-btn {
+  background: #3b82f6;
+}
+
 .remove-btn:hover {
   background: #dc2626;
 }
+
+.retry-btn:hover {
+  background: #2563eb;
+}
+
+.remove-btn:disabled {
+  background: #64748b;
+  cursor: not-allowed;
+}
+
 .queue-controls {
   display: flex;
   gap: 1rem;
   margin: 1.5rem 0;
 }
+
 .sync-btn, .pause-btn, .clear-completed-btn {
-  background: #3b82f6;
-  color: #fff;
+  padding: 0.8rem 1.5rem;
   border: none;
   border-radius: 6px;
-  padding: 0.8rem 2rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  font-size: 1rem;
+  font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
-.sync-btn:disabled, .pause-btn:disabled, .clear-completed-btn:disabled {
-  background: #334155;
-  color: #bfc7d5;
-  cursor: not-allowed;
+
+.sync-btn {
+  background: #3b82f6;
+  color: #fff;
 }
-.sync-btn:hover:not(:disabled), .pause-btn:hover:not(:disabled), .clear-completed-btn:hover:not(:disabled) {
+
+.sync-btn:hover {
   background: #2563eb;
 }
+
+.sync-btn:disabled {
+  background: #64748b;
+  cursor: not-allowed;
+}
+
+.pause-btn {
+  background: #fbbf24;
+  color: #23293a;
+}
+
+.pause-btn:hover {
+  background: #f59e0b;
+}
+
+.pause-btn:disabled {
+  background: #64748b;
+  cursor: not-allowed;
+}
+
+.clear-completed-btn {
+  background: #64748b;
+  color: #fff;
+}
+
+.clear-completed-btn:hover {
+  background: #475569;
+}
+
+.clear-completed-btn:disabled {
+  background: #334155;
+  cursor: not-allowed;
+}
+
 .sync-result {
-  margin-top: 2rem;
+  display: flex;
+  gap: 1.5rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
   background: #23293a;
   border-radius: 8px;
-  padding: 1rem 1.5rem;
-  color: #fff;
-  font-size: 1rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
 }
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+}
+
+.result-item.success {
+  color: #34d399;
+}
+
+.result-item.skipped {
+  color: #fbbf24;
+}
+
+.result-item.error {
+  color: #f87171;
+}
+
+.item-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #f87171;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.item-success-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #34d399;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
 .pagination {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 1rem;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
+
 .pagination button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
   background: #3b82f6;
   color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
   cursor: pointer;
   transition: background 0.2s;
 }
-.pagination button:disabled {
-  background: #334155;
-  color: #bfc7d5;
-  cursor: not-allowed;
-}
-.pagination button:hover:not(:disabled) {
+
+.pagination button:hover {
   background: #2563eb;
 }
+
+.pagination button:disabled {
+  background: #64748b;
+  cursor: not-allowed;
+}
+
 .drive-status-msg {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  text-align: center;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
 }
+
 .drive-status-msg.attached {
-  color: #34d399;
+  background: #34d399;
+  color: #fff;
 }
+
 .drive-status-msg.detached {
-  color: #f87171;
+  background: #f87171;
+  color: #fff;
 }
 </style>

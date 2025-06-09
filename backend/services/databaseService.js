@@ -219,6 +219,28 @@ class DatabaseService {
         return stmt.run(path);
     }
 
+    // Reset a queue item's status
+    async resetQueueItem(item) {
+        const stmt = this.db.prepare(`
+            UPDATE sync_queue 
+            SET status = 'pending', 
+                error = NULL, 
+                progress = 0,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE (plex_key = ? OR path = ?)
+        `);
+        return stmt.run(item.plexKey || item.plex_key || item.key, item.path);
+    }
+
+    // Clear completed items from the queue
+    async clearCompletedItems() {
+        const stmt = this.db.prepare(`
+            DELETE FROM sync_queue 
+            WHERE status = 'done' OR status = 'skipped'
+        `);
+        return stmt.run();
+    }
+
     // Close database connection
     close() {
         if (this.db) {

@@ -75,10 +75,33 @@ router.post('/pause', (req, res) => {
 });
 
 // Clear completed items from the queue
-router.post('/clear-completed', (req, res) => {
-  // In a real implementation, you would filter out completed items
-  // For now, we'll just return success
-  res.json({ success: true });
+router.post('/clear-completed', async (req, res) => {
+  try {
+    await databaseService.clearCompletedItems();
+    const allQueue = await databaseService.getQueue();
+    res.json({ success: true, queue: allQueue });
+  } catch (err) {
+    logger.error('Error clearing completed items: ' + formatError(err));
+    res.status(500).json({ error: 'Failed to clear completed items.' });
+  }
+});
+
+// Retry a failed sync item
+router.post('/retry', async (req, res) => {
+  try {
+    const { item } = req.body;
+    if (!item) {
+      return res.status(400).json({ error: 'No item provided' });
+    }
+
+    // Reset the item's status in the sync queue
+    await databaseService.resetQueueItem(item);
+    const allQueue = await databaseService.getQueue();
+    res.json({ success: true, queue: allQueue });
+  } catch (err) {
+    logger.error('Error retrying sync: ' + formatError(err));
+    res.status(500).json({ error: 'Failed to retry sync' });
+  }
 });
 
 router.post('/start', async (req, res) => {

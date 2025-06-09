@@ -167,19 +167,33 @@ function isOnDrive(item) {
 }
 
 async function addToQueue(item) {
-  if (isInQueue(item.key) || isOnDrive(item)) {
+  if (isInQueue(item.key || item.path) || isOnDrive(item)) {
     toast.info('Already exists on drive')
     return
   }
   try {
-    await axios.post('/api/sync/queue', {
-      items: [{
-        plexKey: item.key,
-        title: item.title,
-        type: item.type
-      }]
-    })
-    queue.value.add(item.key)
+    if (sourceType.value === 'local') {
+      await axios.post('/api/sync/queue', {
+        items: [{
+          path: item.path,
+          title: item.title,
+          type: item.type,
+          season: item.season,
+          episode: item.episode,
+          metadata: item.metadata
+        }]
+      })
+      queue.value.add(item.path)
+    } else {
+      await axios.post('/api/sync/queue', {
+        items: [{
+          plexKey: item.key,
+          title: item.title,
+          type: item.type
+        }]
+      })
+      queue.value.add(item.key)
+    }
     toast.success(`Added ${item.title} to sync queue`)
   } catch (error) {
     toast.error('Failed to add to queue')
@@ -254,14 +268,16 @@ async function fetchMetadata() {
 }
 
 function getPoster(item) {
-  if (!item.metadata) return null
+  // Prefer thumb_url (Plex), then TMDb poster, then other fallbacks
+  if (item.thumb_url) return item.thumb_url;
+  if (!item.metadata) return null;
   try {
-    const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata
-    if (meta.poster_path) return 'https://image.tmdb.org/t/p/w300' + meta.poster_path
-    if (meta.still_path) return 'https://image.tmdb.org/t/p/w300' + meta.still_path
-    if (meta.show_tmdb_id && meta.show_name && meta.show_poster_path) return 'https://image.tmdb.org/t/p/w300' + meta.show_poster_path
+    const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+    if (meta.poster_path) return 'https://image.tmdb.org/t/p/w300' + meta.poster_path;
+    if (meta.still_path) return 'https://image.tmdb.org/t/p/w300' + meta.still_path;
+    if (meta.show_tmdb_id && meta.show_name && meta.show_poster_path) return 'https://image.tmdb.org/t/p/w300' + meta.show_poster_path;
   } catch {}
-  return null
+  return null;
 }
 
 function openMatchModal(item) {
